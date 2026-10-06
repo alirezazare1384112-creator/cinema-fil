@@ -1,0 +1,114 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Media {
+  id            String    @id @default(cuid())
+  tmdbId        Int       @unique
+  title         String
+  overview      String?
+  posterPath    String?
+  backdropPath  String?
+  mediaType     String    // "movie" or "tv"
+  releaseDate   String?
+  rating        Float?
+  userRating    Float?
+  watchStatus   String    @default("plan_to_watch") // "watched", "plan_to_watch", "currently_watching"
+  personalReview String?
+  notes         String?
+  watchDate     DateTime?
+  category      String?   // 'movie' | 'series'
+  genres        String?   // JSON array stored as string
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  localFiles    LocalFile[]
+  edits         MediaEdit[]
+  quotes        Quote[]
+
+  @@index([watchStatus])
+  @@index([mediaType])
+  @@index([category])
+  @@index([updatedAt])
+}
+
+model LocalFile {
+  id            String    @id @default(cuid())
+  mediaId       String?
+  filePath      String
+  fileName      String
+  fileSize      BigInt?
+  resolution    String?   // e.g., "1920x1080"
+  format        String?   // e.g., "mp4", "mkv"
+  codec         String?   // e.g., "h264", "h265"
+  driveLabel    String?
+  folderPath    String?
+  poster        String?
+  subtitle      String?
+  category      String?   // 'movie' | 'series'
+  lastPlayed    DateTime?
+  updatedAt     DateTime  @updatedAt
+
+  media         Media?    @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@index([filePath])
+  @@index([mediaId])
+  @@index([driveLabel])
+  @@index([category])
+  @@index([updatedAt])
+}
+
+model MediaEdit {
+  id            String      @id @default(cuid())
+  mediaId       String?
+  folderId      String?
+  title         String
+  description   String?
+  videoUrl      String
+  thumbnailUrl  String?
+  tags          String?   // JSON array: "Cinematic", "Aesthetic", "Hype"
+  audioInfo     String?   // Track name, artist
+  duration      Float?    // seconds
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  media         Media?      @relation(fields: [mediaId], references: [id], onDelete: SetNull)
+  folder        EditFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+
+  @@index([mediaId])
+  @@index([folderId])
+  @@index([createdAt])
+}
+
+model EditFolder {
+  id            String      @id @default(cuid())
+  name          String      @unique
+  thumbnailUrl  String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  edits         MediaEdit[]
+}
+
+model Quote {
+  id            String    @id @default(cuid())
+  mediaId       String?
+  movieTitle    String?
+  quoteText     String
+  character     String?
+  scene         String?
+  backdropUrl   String?
+  gifUrl        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  media         Media?    @relation(fields: [mediaId], references: [id], onDelete: SetNull)
+
+  @@index([mediaId])
+  @@index([createdAt])
+}
