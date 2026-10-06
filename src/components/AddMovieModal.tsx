@@ -110,7 +110,10 @@ export default function AddMovieModal({ isOpen, onClose, onSaved }: AddMovieModa
         data = {}
       }
 
-      if (data.canceled) return
+      if (data.canceled) {
+        toast('انتخاب فایل لغو شد', 'info')
+        return
+      }
 
       if (!res.ok || !data.path || !data.name) {
         toast(data.error || 'خطا در انتخاب فایل', 'error')
@@ -118,10 +121,11 @@ export default function AddMovieModal({ isOpen, onClose, onSaved }: AddMovieModa
       }
 
       // فقط مسیر فایل اصلی ذخیره می‌شود؛ هیچ کپی از ویدیو انجام نمی‌شود
-      setVideoFileName(data.name)
+      const pickedName = data.name
+      setVideoFileName(pickedName)
       setVideoUrl(data.path)
       setVideoSize(data.size || 0)
-      setTitle((prev) => prev || cleanTitle(data.name))
+      setTitle((prev) => prev || cleanTitle(pickedName))
       toast('فایل انتخاب شد؛ فایل در مسیر اصلی خود باقی می‌ماند', 'success')
 
       try {
