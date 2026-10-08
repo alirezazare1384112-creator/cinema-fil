@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { X, Star, Clock, Eye, Play, Save, FileVideo, Quote, HardDrive, Upload, Link as LinkIcon, Loader2 } from 'lucide-react'
 import { getBackdropURL, getPosterURL, genreNames } from '@/lib/tmdb'
 import { uploadFile, saveImageUrl, isImageBright } from '@/lib/uploadFile'
@@ -39,19 +39,25 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
   const [showPosterUrl, setShowPosterUrl] = useState(false)
   const posterInputRef = useRef<HTMLInputElement>(null)
 
-  const fetchLocalFiles = async () => {
+  // شمارهٔ درخواست تا جوابِ دیررسیدهٔ فیلمِ قبلی، روی فیلمِ جدید اعمال نشود
+  const filesTokenRef = useRef(0)
+
+  const fetchLocalFiles = useCallback(async () => {
     if (!media) return
+    const token = ++filesTokenRef.current
     setLocalLoading(true)
     try {
       const res = await fetch(`/api/local-files?mediaId=${media.id}`)
       const data = await res.json()
+      if (filesTokenRef.current !== token) return
       setLocalFiles(Array.isArray(data) ? data : [])
     } catch {
+      if (filesTokenRef.current !== token) return
       setLocalFiles([])
     } finally {
-      setLocalLoading(false)
+      if (filesTokenRef.current === token) setLocalLoading(false)
     }
-  }
+  }, [media])
 
   const handlePlayExternal = async (filePath: string) => {
     try {
@@ -88,7 +94,13 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
       setNotes(media.notes || '')
       setPosterUrlInput('')
       setShowPosterUrl(false)
+      // فیلمِ قبلی را کنار بگذار و فوراً فایل‌های همین رسانه را بگیر
+      // تا دکمهٔ پخش هیچ‌وقت مسیر فیلم قبلی را نفرستد
+      filesTokenRef.current++
+      setLocalFiles([])
+      void fetchLocalFiles()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [media])
 
   if (!isOpen || !media) return null
