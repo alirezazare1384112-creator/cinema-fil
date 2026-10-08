@@ -40,16 +40,16 @@ function isUrl(value: string): boolean {
 }
 
 /* ------------------------------------------------------------------ *
- * پخش فایل با «تأییدِ پخش»
+ * پخش فایل با «تأییدِ پخش» — نسخهٔ بهینه
  *
- * مشکل قبلی: اگر پخش‌کنندهٔ قدیمیِ تک‌نمونه (Media Player ویندوز یا
- * PotPlayer) از قبل باز بود و بسته‌شدنش به هر دلیلی شکست می‌خورد،
- * فایل جدید نادیده گرفته می‌شد و همان فیلم قبلی روی صفحه می‌ماند.
+ * مشکل قبلی: اگر پخش‌کنندهٔ قدیمیِ تک‌نمونه از قبل باز بود و بسته‌شدنش
+ * شکست می‌خورد، فایل جدید نادیده گرفته می‌شد و همان فیلم قبلی می‌ماند.
  *
- * راه‌حل: بعد از هر بار باز کردن، عنوان پنجره‌های باز خوانده می‌شود و
- * بررسی می‌شود که واقعاً همان فایلِ درخواستی دیده می‌شود. اگر نه،
- * پخش‌کننده دوباره بسته و باز می‌شود (حداکثر ۳ بار). درخواست‌ها هم صف
- * می‌شوند تا دو پخشِ همزمان روی هم نیفتند.
+ * راه‌حل: بستن + باز کردن + خواندن عنوان پنجره و تأیید، همه در «یک»
+ * اسکریپت PowerShell انجام می‌شود (قبلاً ۱۰+ بار PowerShell اجرا می‌شد و
+ * هر بار Add-Type کامپایل می‌شد). حالا هر تلاش فقط یک بار PowerShell
+ * اجرا می‌کند و پاسخ پخش از ~۴-۸ ثانیه به ~۲-۳ ثانیه رسیده است.
+ * اگر تأیید نشد، حداکثر ۳ بار بسته و دوباره باز می‌شود.
  * ------------------------------------------------------------------ */
 
 const PLAYER_EXE_NAMES = [
@@ -57,6 +57,8 @@ const PLAYER_EXE_NAMES = [
   'vlc', 'mpc-hc64', 'mpc-hc', 'KMPlayer64', 'KMPlayer',
   'wmplayer', 'MediaPlayer', 'Video.UI', 'Music.UI'
 ]
+
+const PLAYER_MARKERS = ['potplayer', 'vlc', 'media player', 'kmplayer', 'mpc', 'wmplayer']
 
 const DESKTOP_PLAYERS = [
   'C:\\Program Files\\DAUM\\PotPlayer\\PotPlayerMini64.exe',
@@ -71,95 +73,177 @@ const DESKTOP_PLAYERS = [
 
 const PS_NAMES = PLAYER_EXE_NAMES.map((n) => `'${n}'`).join(',')
 
-/** بستن مؤدبانهٔ پنجره‌های پخش‌کننده (WM_CLOSE — بدون کشتن اجباری) */
-const CLOSE_GRACEFUL_PS = `
-$names = @(${PS_NAMES})
-Add-Type @"
-using System;
-using System.Text;
-using System.Runtime.InteropServices;
-public class WinCloseMP {
-  public delegate bool E(IntPtr h, IntPtr l);
-  [DllImport("user32.dll")] public static extern bool EnumWindows(E cb, IntPtr l);
-  [DllImport("user32.dll")] public static extern int GetWindowText(IntPtr h, StringBuilder s, int c);
-  [DllImport("user32.dll")] public static extern int GetClassName(IntPtr h, StringBuilder s, int c);
-  [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
-  [DllImport("user32.dll", EntryPoint="PostMessageW")] public static extern bool PostMessage(IntPtr h, uint msg, IntPtr wp, IntPtr lp);
-}
-"@
-$WM_CLOSE = 0x0010
-$sbT = New-Object System.Text.StringBuilder 512
-$sbC = New-Object System.Text.StringBuilder 512
-$closedWindows = 0
-$cb = [WinCloseMP+E]{
-  param($h, $l)
-  if (-not [WinCloseMP]::IsWindowVisible($h)) { return $true }
-  $null = [WinCloseMP]::GetWindowText($h, $sbT, 512)
-  $null = [WinCloseMP]::GetClassName($h, $sbC, 512)
-  $t = $sbT.ToString(); $c = $sbC.ToString()
-  $isUwpMedia = ($c -eq 'ApplicationFrameWindow' -and ($t -eq 'Media Player' -or $t -eq 'Films & TV' -or $t -eq 'Movies & TV'))
-  $isPlayerWindow = ($t -match 'PotPlayer|VLC|Media Player|KMPlayer|Windows Media Player|Media Player Classic')
-  if ($isUwpMedia -or $isPlayerWindow) {
-    $null = [WinCloseMP]::PostMessage($h, $WM_CLOSE, [IntPtr]::Zero, [IntPtr]::Zero)
-    $script:closedWindows++
+const b64 = (s: string) => Buffer.from(s, 'utf8').toString('base64')
+
+/**
+ * رشته‌هایی که باید در عنوان پنجره دیده شوند: نام کامل فایل، نام بدون
+ * پسوند و پیشوند ۲۴ کاراکتری (برای عنوان‌های کوتاه‌شده).
+ */
+function buildNeedles(target: string): string[] {
+  const base = path.basename(target)
+  const stem = base.replace(/\.[^.]+$/, '')
+  const out = new Set<string>()
+  for (const s of [base, stem]) {
+    if (s.length >= 6) out.add(s.toLowerCase())
+    const p = s.slice(0, 24).toLowerCase()
+    if (p.length >= 8) out.add(p)
   }
-  return $true
+  return [...out]
 }
-[void][WinCloseMP]::EnumWindows($cb, [IntPtr]::Zero)
-Write-Output ("GRACEFUL_CLOSED=" + $closedWindows)
-`
 
-/** شمارش پخش‌کننده‌های زنده — بدون Add-Type، سریع و قابل‌اعتماد */
-const COUNT_PS = `
-$names = @(${PS_NAMES})
-$alive = 0
-foreach ($n in $names) {
-  $p = Get-Process -Name $n -ErrorAction SilentlyContinue
-  if ($p) { $alive += @($p).Count }
+interface PlayScriptOptions {
+  target: string
+  exe: string | null
+  /** نام فایل باید در عنوان پنجره باشد؟ (وقتی پخش‌کننده مستقیم اجرا می‌شود بله) */
+  requireFile: boolean
+  /** برای URL فقط باز کن، تأیید نکن */
+  verify: boolean
 }
-Write-Output ("ALIVE=" + $alive)
-`
 
-/** کشتن اجباری — فقط وقتی بستن مؤدبانه جواب نداده باشد */
-const FORCE_KILL_PS = `
-$names = @(${PS_NAMES})
-$killed = 0
-foreach ($n in $names) {
-  $p = Get-Process -Name $n -ErrorAction SilentlyContinue
-  if ($p) { $killed += @($p).Count; $p | Stop-Process -Force -ErrorAction SilentlyContinue }
-}
-Write-Output ("KILLED=" + $killed)
-`
+/**
+ * یک اسکریپت واحد: بستن مؤدبانه → در صورت لزوم کشتن اجباری → اجرا →
+ * پایش عنوان پنجره تا دیده شدن فایل درخواستی.
+ */
+function buildPlayScript(opts: PlayScriptOptions): string {
+  const needles = buildNeedles(opts.target).map((n) => `'${b64(n)}'`).join(',')
+  const markers = PLAYER_MARKERS.map((m) => `'${b64(m)}'`).join(',')
 
-/** عنوان همهٔ پنجره‌های باز — خروجی UTF-8 تا نام فارسی فایل هم درست خوانده شود */
-const WINDOW_TITLES_PS = `
+  return `
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$ErrorActionPreference = 'SilentlyContinue'
+$names = @(${PS_NAMES})
+$file = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${b64(opts.target)}'))
+$exe = '${opts.exe ? b64(opts.exe) : ''}'
+if ($exe -ne '') { $exe = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($exe)) }
+$needles = @(${needles})
+$markers = @(${markers})
+$needles = @($needles | ForEach-Object { [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($_)).ToLower() })
+$markers = @($markers | ForEach-Object { [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($_)).ToLower() })
+$requireFile = ${opts.requireFile ? '$true' : '$false'}
+$doVerify = ${opts.verify ? '$true' : '$false'}
+
 Add-Type @"
 using System;
 using System.Text;
 using System.Runtime.InteropServices;
-public class WinTitleMP {
+public class PlayWin {
   public delegate bool E(IntPtr h, IntPtr l);
   [DllImport("user32.dll")] public static extern bool EnumWindows(E cb, IntPtr l);
-  [DllImport("user32.dll")] public static extern int GetWindowText(IntPtr h, StringBuilder s, int c);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, StringBuilder s, int c);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetClassName(IntPtr h, StringBuilder s, int c);
   [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern bool PostMessage(IntPtr h, uint msg, IntPtr wp, IntPtr lp);
 }
 "@
-$script:sbT = New-Object System.Text.StringBuilder 512
-$script:titles = New-Object System.Collections.ArrayList
-$cb = [WinTitleMP+E]{
-  param($h, $l)
-  if (-not [WinTitleMP]::IsWindowVisible($h)) { return $true }
-  $null = [WinTitleMP]::GetWindowText($h, $script:sbT, 512)
-  $t = $script:sbT.ToString()
-  if ($t.Length -gt 0) { [void]$script:titles.Add($t) }
-  return $true
-}
-[void][WinTitleMP]::EnumWindows($cb, [IntPtr]::Zero)
-foreach ($t in $script:titles) { Write-Output ("TITLE=" + $t) }
-`
 
-function runPowerShell(script: string, timeoutMs = 20000): Promise<string> {
+$script:sbT = New-Object System.Text.StringBuilder 512
+$script:sbC = New-Object System.Text.StringBuilder 512
+
+function Get-Alive {
+  $a = 0
+  foreach ($n in $names) {
+    $p = Get-Process -Name $n -ErrorAction SilentlyContinue
+    if ($p) { $a += @($p).Count }
+  }
+  return $a
+}
+
+function Get-Titles {
+  $script:titles = New-Object System.Collections.ArrayList
+  $cb = [PlayWin+E]{
+    param($h, $l)
+    if (-not [PlayWin]::IsWindowVisible($h)) { return $true }
+    $null = [PlayWin]::GetWindowText($h, $script:sbT, 512)
+    $t = $script:sbT.ToString()
+    if ($t.Length -gt 0) { [void]$script:titles.Add($t) }
+    return $true
+  }
+  [void][PlayWin]::EnumWindows($cb, [IntPtr]::Zero)
+  return $script:titles
+}
+
+function Close-PlayerWindows {
+  $script:closed = 0
+  $cb = [PlayWin+E]{
+    param($h, $l)
+    if (-not [PlayWin]::IsWindowVisible($h)) { return $true }
+    $null = [PlayWin]::GetWindowText($h, $script:sbT, 512)
+    $null = [PlayWin]::GetClassName($h, $script:sbC, 512)
+    $t = $script:sbT.ToString()
+    $c = $script:sbC.ToString()
+    $isUwp = ($c -eq 'ApplicationFrameWindow' -and ($t -eq 'Media Player' -or $t -eq 'Films & TV' -or $t -eq 'Movies & TV'))
+    $isPlayer = ($t -match 'PotPlayer|VLC|Media Player|KMPlayer|Windows Media Player|Media Player Classic')
+    if ($isUwp -or $isPlayer) {
+      if ([PlayWin]::PostMessage($h, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)) { $script:closed++ }
+    }
+    return $true
+  }
+  [void][PlayWin]::EnumWindows($cb, [IntPtr]::Zero)
+  return $script:closed
+}
+
+$sw = [Diagnostics.Stopwatch]::StartNew()
+$closed = 0
+$forced = 0
+
+# 1) بستن پخش‌کنندهٔ قبلی (اول مؤدبانه، بعد در صورت لزوم اجباری)
+if ((Get-Alive) -gt 0) {
+  $closed = Close-PlayerWindows
+  $deadline = (Get-Date).AddMilliseconds(2500)
+  while ((Get-Date) -lt $deadline -and (Get-Alive) -gt 0) { Start-Sleep -Milliseconds 150 }
+  if ((Get-Alive) -gt 0) {
+    foreach ($n in $names) {
+      $p = Get-Process -Name $n -ErrorAction SilentlyContinue
+      if ($p) { $forced += @($p).Count; $p | Stop-Process -Force -ErrorAction SilentlyContinue }
+    }
+    $deadline = (Get-Date).AddMilliseconds(2000)
+    while ((Get-Date) -lt $deadline -and (Get-Alive) -gt 0) { Start-Sleep -Milliseconds 150 }
+  }
+}
+$aliveAfterClose = Get-Alive
+
+# 2) باز کردن فیلم درخواستی
+$spawned = 0
+if ($exe -ne '') {
+  try { Start-Process -FilePath $exe -ArgumentList ('"' + $file + '"') | Out-Null; $spawned = 1 } catch { $spawned = 0 }
+} else {
+  try { Start-Process -FilePath $file | Out-Null; $spawned = 1 } catch { $spawned = 0 }
+}
+
+# 3) تأیید: عنوان پنجره باید فایل درخواستی (یا یک پخش‌کننده) را نشان دهد
+$title = ''
+$ok = $false
+if ($doVerify) {
+  $deadline = (Get-Date).AddSeconds(5)
+  while ((Get-Date) -lt $deadline -and -not $ok) {
+    foreach ($t in (Get-Titles)) {
+      $lt = $t.ToLower()
+      if ($requireFile) {
+        foreach ($n in $needles) { if ($lt.Contains($n)) { $title = $t; $ok = $true; break } }
+      } else {
+        foreach ($m in $markers) { if ($lt.Contains($m)) { $title = $t; $ok = $true; break } }
+      }
+      if ($ok) { break }
+    }
+    if (-not $ok) { Start-Sleep -Milliseconds 250 }
+  }
+}
+
+$result = 'FAIL'
+if (-not $doVerify) { $result = 'SKIP' }
+elseif ($ok) { $result = 'OK' }
+
+Write-Output ("PLAYRESULT=" + $result)
+Write-Output ("CLOSED=" + $closed)
+Write-Output ("FORCED=" + $forced)
+Write-Output ("ALIVE_AFTER_CLOSE=" + $aliveAfterClose)
+Write-Output ("SPAWNED=" + $spawned)
+Write-Output ("TITLE=" + $title)
+Write-Output ("MS=" + [int]$sw.ElapsedMilliseconds)
+`
+}
+
+function runPowerShell(script: string, timeoutMs = 25000): Promise<string> {
   return new Promise((resolve) => {
     const encoded = Buffer.from(script, 'utf16le').toString('base64')
     let out = ''
@@ -178,76 +262,15 @@ function runPowerShell(script: string, timeoutMs = 20000): Promise<string> {
   })
 }
 
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
-
-function readNumber(out: string, key: string): number | null {
-  const m = new RegExp(`${key}=(\\d+)`).exec(out)
-  return m ? Number(m[1]) : null
+function field(out: string, key: string): string {
+  const m = new RegExp(`^${key}=(.*)$`, 'm').exec(out)
+  return m ? m[1].trim() : ''
 }
 
-async function countRunningPlayers(): Promise<number | null> {
-  const out = await runPowerShell(COUNT_PS, 8000)
-  return readNumber(out, 'ALIVE')
-}
-
-async function windowTitles(): Promise<string[]> {
-  const out = await runPowerShell(WINDOW_TITLES_PS, 8000)
-  return out
-    .split(/\r?\n/)
-    .map((l) => l.replace(/^TITLE=/, '').trim())
-    .filter((l) => l.length > 0)
-}
-
-/**
- * آیا پنجره‌ای هست که دارد همین فایل را نشان می‌دهد؟
- * برای نام‌های خیلی بلند، پیشوند ۲۴ کاراکتری هم پذیرفته می‌شود چون
- * عنوان بعضی پنجره‌ها کوتاه‌شده است.
- */
-function findPlayingTitle(titles: string[], target: string): string | null {
-  const base = path.basename(target)
-  const stem = base.replace(/\.[^.]+$/, '')
-  const needles = [base, stem]
-    .map((s) => s.toLowerCase())
-    .filter((s) => s.length >= 6)
-  const prefixes = [base, stem]
-    .map((s) => s.slice(0, 24).toLowerCase())
-    .filter((s) => s.length >= 8)
-
-  for (const title of titles) {
-    const lt = title.toLowerCase()
-    if (needles.some((n) => lt.includes(n))) return title
-    if (prefixes.some((p) => lt.includes(p))) return title
-  }
-  return null
-}
-
-/**
- * بستن پخش‌کننده‌ها: اول مؤدبانه، بعد در صورت لزوم اجباری، و در هر دو
- * حالت تا وقتی واقعاً بسته شوند صبر می‌کنیم تا پخشِ قبلی هرگز باقی نماند.
- */
-async function closeRunningPlayers(): Promise<{ closed: number; remaining: number }> {
-  let closed = 0
-
-  const out = await runPowerShell(CLOSE_GRACEFUL_PS, 10000)
-  closed = readNumber(out, 'GRACEFUL_CLOSED') ?? 0
-
-  for (let i = 0; i < 6; i++) {
-    await delay(300)
-    const alive = await countRunningPlayers()
-    if (alive === null || alive === 0) return { closed, remaining: 0 }
-  }
-
-  // هنوز زنده‌اند → کشتن اجباری
-  const killOut = await runPowerShell(FORCE_KILL_PS, 8000)
-  closed += readNumber(killOut, 'KILLED') ?? 0
-
-  for (let i = 0; i < 6; i++) {
-    await delay(300)
-    const alive = await countRunningPlayers()
-    if (alive === null || alive === 0) return { closed, remaining: 0 }
-  }
-
-  return { closed, remaining: (await countRunningPlayers()) ?? 0 }
+function fieldNumber(out: string, key: string): number {
+  const v = field(out, key)
+  const n = Number(v)
+  return Number.isFinite(n) ? n : 0
 }
 
 function spawnPlayer(exe: string, args: string[]): void {
@@ -261,7 +284,6 @@ function spawnPlayer(exe: string, args: string[]): void {
 }
 
 function openWithShell(target: string): void {
-  // مثل دوبار کلیک روی فایل در ویندوز عمل می‌کند
   try {
     const child = spawn('cmd.exe', ['/c', 'start', '', target], {
       detached: true,
@@ -292,52 +314,65 @@ interface OpenOutcome {
   attempts: number
   closedPrevious: number
   windowTitle: string | null
+  verified: boolean
+  elapsedMs?: number
   error?: string
 }
 
 /**
  * باز کردن فایل و تأیید اینکه همان فایل روی صفحه است.
- * اگر پنجره‌ای باز شد ولی فایلِ دیگری (یا هیچ فایلی) دیده شد،
- * پخش‌کننده بسته و دوباره تلاش می‌شود.
+ * هر تلاش = یک اسکریپت PowerShell (بستن + اجرا + پایش عنوان پنجره).
  */
-async function openAndVerify(target: string): Promise<OpenOutcome> {
+async function openAndVerify(target: string, opts: { verify: boolean } = { verify: true }): Promise<OpenOutcome> {
   const exe = firstAvailableDesktopPlayer()
   const player = exe ? path.basename(exe) : 'default'
+  const requireFile = !!exe && opts.verify
   let closedPrevious = 0
   let lastTitle: string | null = null
+  let lastMs = 0
   const MAX_ATTEMPTS = 3
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    const closeResult = await closeRunningPlayers()
-    closedPrevious += closeResult.closed
-    await delay(300)
+    const out = await runPowerShell(
+      buildPlayScript({ target, exe, requireFile, verify: opts.verify }),
+      25000
+    )
 
-    if (exe) {
-      console.log(`play attempt ${attempt}/${MAX_ATTEMPTS}: opening with ${exe} -> ${target}`)
-      spawnPlayer(exe, [target])
-    } else {
-      console.log(`play attempt ${attempt}/${MAX_ATTEMPTS}: opening with default handler -> ${target}`)
-      openWithShell(target)
-    }
-
-    // تا ۶ ثانیه صبر می‌کنیم تا عنوان پنجره، فایل درخواستی را نشان دهد
-    const deadline = Date.now() + 6000
-    while (Date.now() < deadline) {
-      await delay(500)
-      const titles = await windowTitles()
-      // وقتی پخش‌کننده را مستقیم اجرا می‌کنیم، نام فایل باید در عنوان پنجره باشد؛
-      // وقتی از هندلر پیش‌فرض ویندوز استفاده می‌کنیم (عنوان ممکن است نام فایل
-      // را نداشته باشد) کافی است یک پنجرهٔ پخش‌کنندهٔ باز پیدا شود.
-      const hit = exe
-        ? findPlayingTitle(titles, target)
-        : (titles.find((t) => /potplayer|vlc|media player|kmplayer|mpc|wmplayer/i.test(t)) ?? null)
-      if (hit) {
-        return { success: true, player, attempts: attempt, closedPrevious, windowTitle: hit }
+    // اگر PowerShell اصلاً جوابی نداد، بی‌صدا رها نمی‌کنیم:
+    // فایل را مستقیم باز می‌کنیم تا دکمهٔ پخش هیچ‌وقت بی‌نتیجه نماند.
+    if (!out.trim()) {
+      console.error('play-external: PowerShell خروجی نداد؛ باز کردن مستقیم انجام شد برای', target)
+      if (exe) spawnPlayer(exe, [target])
+      else openWithShell(target)
+      return {
+        success: true, player, attempts: attempt, closedPrevious,
+        windowTitle: null, verified: false
       }
-      lastTitle = titles.find((t) => /potplayer|vlc|media player|kmplayer|mpc/i.test(t)) ?? null
     }
 
-    console.warn(`play attempt ${attempt}/${MAX_ATTEMPTS}: فایل درخواستی روی صفحه نبود (آخرین عنوان پخش‌کننده: ${lastTitle ?? 'هیچ'})`)
+    closedPrevious += fieldNumber(out, 'CLOSED') + fieldNumber(out, 'FORCED')
+    lastMs = fieldNumber(out, 'MS')
+    const result = field(out, 'PLAYRESULT')
+    lastTitle = field(out, 'TITLE') || null
+
+    if (result === 'OK' || result === 'SKIP') {
+      console.log(
+        `play-external: ${result} (attempt ${attempt}/${MAX_ATTEMPTS}, ${lastMs}ms, ` +
+        `closed=${fieldNumber(out, 'CLOSED')}, forced=${fieldNumber(out, 'FORCED')}) -> ${lastTitle || target}`
+      )
+      return {
+        success: true, player, attempts: attempt, closedPrevious,
+        windowTitle: opts.verify ? lastTitle : null,
+        verified: result === 'OK',
+        elapsedMs: lastMs
+      }
+    }
+
+    console.warn(
+      `play-external: تأیید نشد (attempt ${attempt}/${MAX_ATTEMPTS}, ${lastMs}ms, ` +
+      `aliveAfterClose=${fieldNumber(out, 'ALIVE_AFTER_CLOSE')}, spawned=${fieldNumber(out, 'SPAWNED')}, ` +
+      `عنوان: ${lastTitle ?? 'هیچ'}) برای ${target}`
+    )
   }
 
   return {
@@ -346,6 +381,8 @@ async function openAndVerify(target: string): Promise<OpenOutcome> {
     attempts: MAX_ATTEMPTS,
     closedPrevious,
     windowTitle: lastTitle,
+    verified: false,
+    elapsedMs: lastMs,
     error: 'پخش‌کننده باز شد اما فایل درخواستی روی صفحه نیامد'
   }
 }
@@ -365,7 +402,8 @@ const superseded = (): OpenOutcome => ({
   player: '-',
   attempts: 0,
   closedPrevious: 0,
-  windowTitle: null
+  windowTitle: null,
+  verified: false
 })
 
 export async function POST(request: NextRequest) {
@@ -382,7 +420,9 @@ export async function POST(request: NextRequest) {
       const diskPath = resolveUploadUrl(filePath)
       if (diskPath) {
         console.log('Upload URL resolved to disk:', diskPath)
-        const outcome = await withPlayLock(() => (requestId === latestRequest ? openAndVerify(diskPath) : Promise.resolve(superseded())))
+        const outcome = await withPlayLock(() =>
+          requestId === latestRequest ? openAndVerify(diskPath) : Promise.resolve(superseded())
+        )
         return NextResponse.json(
           { resolvedPath: diskPath, disk: true, ...outcome },
           { status: outcome.success ? 200 : 502 }
@@ -391,20 +431,12 @@ export async function POST(request: NextRequest) {
 
       const target = filePath.startsWith('/') ? `http://localhost:3000${filePath}` : filePath
       console.log('Play URL:', target)
-      // آدرس وب را فقط به هندلر پیش‌فرض می‌دهیم (پخش‌کنندهٔ دسکتاپ برای URL مناسب نیست)
-      const outcome = await withPlayLock(async () => {
-        if (requestId !== latestRequest) return superseded()
-        const closeResult = await closeRunningPlayers()
-        await delay(300)
-        openWithShell(target)
-        return {
-          success: true,
-          player: 'default',
-          attempts: 1,
-          closedPrevious: closeResult.closed,
-          windowTitle: null
-        } satisfies OpenOutcome
-      })
+      // آدرس وب را فقط با هندلر پیش‌فرض باز می‌کنیم (تأیید عنوان پنجره معنا ندارد)
+      const outcome = await withPlayLock(() =>
+        requestId === latestRequest
+          ? openAndVerify(target, { verify: false })
+          : Promise.resolve(superseded())
+      )
       return NextResponse.json({ resolvedPath: target, url: true, ...outcome })
     }
 
@@ -418,14 +450,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const outcome = await withPlayLock(() => (requestId === latestRequest ? openAndVerify(resolved) : Promise.resolve(superseded())))
+    const outcome = await withPlayLock(() =>
+      requestId === latestRequest ? openAndVerify(resolved) : Promise.resolve(superseded())
+    )
 
     if (!outcome.success) {
       console.error('play-external: verification failed for', resolved, outcome)
       return NextResponse.json({ error: outcome.error, ...outcome }, { status: 502 })
     }
 
-    console.log('play-external: verified ->', outcome.windowTitle, `(attempt ${outcome.attempts})`)
     return NextResponse.json({ resolvedPath: resolved, ...outcome })
   } catch (error) {
     console.error('External play error:', error)

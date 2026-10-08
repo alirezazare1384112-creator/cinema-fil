@@ -41,9 +41,12 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
 
   // شمارهٔ درخواست تا جوابِ دیررسیدهٔ فیلمِ قبلی، روی فیلمِ جدید اعمال نشود
   const filesTokenRef = useRef(0)
+  // آخرین رسانه‌ای که فهرست فایل‌هایش کامل گرفته شده → جلوگیری از درخواست تکراری
+  const filesLoadedIdRef = useRef<string | null>(null)
 
-  const fetchLocalFiles = useCallback(async () => {
+  const fetchLocalFiles = useCallback(async (force = false) => {
     if (!media) return
+    if (!force && filesLoadedIdRef.current === media.id) return
     const token = ++filesTokenRef.current
     setLocalLoading(true)
     try {
@@ -51,24 +54,34 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
       const data = await res.json()
       if (filesTokenRef.current !== token) return
       setLocalFiles(Array.isArray(data) ? data : [])
+      filesLoadedIdRef.current = media.id
     } catch {
       if (filesTokenRef.current !== token) return
       setLocalFiles([])
+      filesLoadedIdRef.current = null
     } finally {
       if (filesTokenRef.current === token) setLocalLoading(false)
     }
   }, [media])
 
+  const [playingFile, setPlayingFile] = useState<string | null>(null)
+
   const handlePlayExternal = async (filePath: string) => {
+    if (playingFile) return
+    setPlayingFile(filePath)
     try {
       const res = await fetch('/api/play-external', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filePath })
       })
-      if (!res.ok) toast('نمی‌توان پخش‌کننده را باز کرد', 'error')
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) toast(data.error || 'نمی‌توان پخش‌کننده را باز کرد', 'error')
+      else toast('فیلم در حال پخش است', 'success')
     } catch {
       toast('خطا در ارسال درخواست', 'error')
+    } finally {
+      setPlayingFile(null)
     }
   }
 
@@ -97,8 +110,9 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
       // فیلمِ قبلی را کنار بگذار و فوراً فایل‌های همین رسانه را بگیر
       // تا دکمهٔ پخش هیچ‌وقت مسیر فیلم قبلی را نفرستد
       filesTokenRef.current++
+      filesLoadedIdRef.current = null
       setLocalFiles([])
-      void fetchLocalFiles()
+      void fetchLocalFiles(true)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [media])
@@ -444,10 +458,15 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
                     </div>
                     <button
                       onClick={() => handlePlayExternal(f.filePath)}
-                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-l from-violet-500 to-pink-500 rounded-lg font-medium text-white hover:opacity-90 transition-opacity shrink-0"
+                      disabled={playingFile === f.filePath}
+                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-l from-violet-500 to-pink-500 rounded-lg font-medium text-white hover:opacity-90 transition-opacity shrink-0 disabled:opacity-70 disabled:cursor-wait"
                     >
-                      <Play className="w-4 h-4" />
-                      پخش در پلیر پیش‌فرض
+                      {playingFile === f.filePath ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Play className="w-4 h-4" />
+                      )}
+                      {playingFile === f.filePath ? 'در حال باز کردن…' : 'پخش در پلیر پیش‌فرض'}
                     </button>
                   </div>
                 ))
