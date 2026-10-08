@@ -48,6 +48,39 @@ export async function POST(request: NextRequest) {
   }
 }
 
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const id = body.id as string | undefined
+    if (!id || typeof id !== 'string') {
+      return NextResponse.json({ error: 'ID is required' }, { status: 400 })
+    }
+
+    const data: { name?: string; thumbnailUrl?: string | null } = {}
+
+    if (typeof body.name === 'string' && body.name.trim()) {
+      data.name = body.name.trim()
+    }
+
+    // thumbnailUrl: رشته → پوستر جدید | null/خالی → حذف پوستر
+    if (body.thumbnailUrl === null || body.thumbnailUrl === '') {
+      data.thumbnailUrl = null
+    } else if (typeof body.thumbnailUrl === 'string') {
+      data.thumbnailUrl = body.thumbnailUrl.trim()
+    }
+
+    if (Object.keys(data).length === 0) {
+      return NextResponse.json({ error: 'چیزی برای به‌روزرسانی ارسال نشده' }, { status: 400 })
+    }
+
+    const folder = await prisma.editFolder.update({ where: { id }, data })
+    return NextResponse.json(folder)
+  } catch (error) {
+    console.error('Error updating folder:', error)
+    return NextResponse.json({ error: 'پوشه پیدا نشد' }, { status: 404 })
+  }
+}
+
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)

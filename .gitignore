@@ -44,3 +44,6 @@ next-env.d.ts
 
 # user uploads (large media files)
 /uploads
+
+# کش پوسترها (بهینه‌سازی سرعت)
+.tmdb-image-cache/

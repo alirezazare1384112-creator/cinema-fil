@@ -9,49 +9,79 @@ function resolveKey(apiKey?: string): string {
   return key
 }
 
-export async function searchTMDB(query: string, type: 'multi' | 'movie' | 'tv' = 'multi', apiKey?: string, page = 1) {
-  const key = resolveKey(apiKey)
+/* ------------------------------------------------------------------ *
+ * کشِ درحافظه + مهلت مشخص برای درخواست‌های TMDB
+ *
+ * قبلاً هر رفت‌وبرگشتِ TMDB بدون مهلت بود؛ وقتی اینترنت کند یا قطع
+ * می‌شد، صفحهٔ اصلی تا ۱۰-۱۱ ثانیه معطل می‌ماند و بعد خطا می‌داد.
+ * حالا هر درخواست حداکثر ۶ ثانیه صبر می‌کند، نتیجه در حافظه نگه
+ * داشته می‌شود و اگر اینترنت در دسترس نباشد، همان نسخهٔ ذخیره‌شده
+ * (حتی کهنه) برگردانده می‌شود تا برنامه هیچ‌وقت از کار نیفتد.
+ * ------------------------------------------------------------------ */
+const JSON_CACHE = new Map<string, { data: unknown; ts: number }>()
+const FETCH_TIMEOUT_MS = 6000
+const OUTAGE_COOLDOWN_MS = 30_000
+let networkDownUntil = 0
+const TTL = {
+  trending: 10 * 60_000, // ۱۰ دقیقه
+  search: 5 * 60_000,    // ۵ دقیقه
+  details: 30 * 60_000   // ۳۰ دقیقه
+} as const
 
-  const response = await fetch(
-    `${TMDB_BASE_URL}/search/${type}?api_key=${key}&query=${encodeURIComponent(query)}&include_adult=false&language=fa&page=${page}`
-  )
+async function fetchJson(url: string, ttlMs: number, failMessage: string): Promise<unknown> {
+  const hit = JSON_CACHE.get(url)
+  if (hit && Date.now() - hit.ts < ttlMs) return hit.data
 
-  if (!response.ok) {
-    if (response.status === 401) throw new Error('کلید API TMDB نامعتبر است')
-    throw new Error('جستجوی TMDB با خطا مواجه شد')
+  // اینترنت قطع است → بدون معطلی همان نسخهٔ ذخیره‌شده (یا خطا) برگردد
+  if (Date.now() < networkDownUntil) {
+    if (hit) return hit.data
+    throw new Error(failMessage)
   }
 
-  return response.json()
+  let res: globalThis.Response
+  try {
+    res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
+  } catch (error) {
+    // خطای شبکه/مهلت → ۳۰ ثانیه بعدی سریع جواب بدهند
+    networkDownUntil = Date.now() + OUTAGE_COOLDOWN_MS
+    if (hit) return hit.data
+    throw error
+  }
+
+  if (!res.ok) {
+    if (res.status === 401) throw new Error('کلید API TMDB نامعتبر است')
+    if (hit) return hit.data // پاسخ خطا از اینترنت → نسخهٔ ذخیره‌شده
+    throw new Error(failMessage)
+  }
+
+  try {
+    const data = await res.json()
+    JSON_CACHE.set(url, { data, ts: Date.now() })
+    return data
+  } catch {
+    if (hit) return hit.data
+    throw new Error(failMessage)
+  }
+}
+
+export async function searchTMDB(query: string, type: 'multi' | 'movie' | 'tv' = 'multi', apiKey?: string, page = 1) {
+  const key = resolveKey(apiKey)
+  const url =
+    `${TMDB_BASE_URL}/search/${type}?api_key=${key}&query=${encodeURIComponent(query)}` +
+    `&include_adult=false&language=fa&page=${page}`
+  return fetchJson(url, TTL.search, 'جستجوی TMDB با خطا مواجه شد')
 }
 
 export async function getTrending(mediaType: 'all' | 'movie' | 'tv' = 'all', apiKey?: string, page = 1) {
   const key = resolveKey(apiKey)
-
-  const response = await fetch(
-    `${TMDB_BASE_URL}/trending/${mediaType}/week?api_key=${key}&language=fa&page=${page}`
-  )
-
-  if (!response.ok) {
-    if (response.status === 401) throw new Error('کلید API TMDB نامعتبر است')
-    throw new Error('دریافت محتوای پرطرفدار با خطا مواجه شد')
-  }
-
-  return response.json()
+  const url = `${TMDB_BASE_URL}/trending/${mediaType}/week?api_key=${key}&language=fa&page=${page}`
+  return fetchJson(url, TTL.trending, 'دریافت محتوای پرطرفدار با خطا مواجه شد')
 }
 
 export async function getDetails(id: number, type: 'movie' | 'tv', apiKey?: string) {
   const key = resolveKey(apiKey)
-
-  const response = await fetch(
-    `${TMDB_BASE_URL}/${type}/${id}?api_key=${key}&append_to_response=credits,videos&language=fa`
-  )
-
-  if (!response.ok) {
-    if (response.status === 401) throw new Error('کلید API TMDB نامعتبر است')
-    throw new Error('دریافت جزئیات با خطا مواجه شد')
-  }
-
-  return response.json()
+  const url = `${TMDB_BASE_URL}/${type}/${id}?api_key=${key}&append_to_response=credits,videos&language=fa`
+  return fetchJson(url, TTL.details, 'دریافت جزئیات با خطا مواجه شد')
 }
 
 export const GENRE_MAP: Record<number, string> = {

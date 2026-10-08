@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { Scissors, Plus, Tag, Play, Trash2, Edit, Film, Upload, Loader2, Check, ArrowRight, Folder, FolderOpen } from 'lucide-react'
+import { useState, useEffect, useRef, type ChangeEvent } from 'react'
+import { Scissors, Plus, Tag, Play, Trash2, Edit, Film, Upload, Loader2, Check, ArrowRight, Folder, FolderOpen, ImagePlus } from 'lucide-react'
 import type { MediaEdit, EditFolder } from '@/types'
 import { useToast } from '@/components/Toast'
 import { extractPoster } from '@/lib/videoPoster'
@@ -224,8 +224,77 @@ export default function EditsPage() {
 
   const filteredEdits = getFilteredEdits()
 
+  /* ---------- پوستر پوشه ---------- */
+  const folderPosterInputRef = useRef<HTMLInputElement>(null)
+  // شناسهٔ پوشهٔ در حال انتخاب در ref نگه داشته می‌شود تا بلافاصله قابل خواندن باشد
+  const posterTargetRef = useRef<string | null>(null)
+  const [savingPosterId, setSavingPosterId] = useState<string | null>(null)
+
+  const pickFolderPoster = (folder: EditFolder) => {
+    if (savingPosterId) return
+    posterTargetRef.current = folder.id
+    folderPosterInputRef.current?.click()
+  }
+
+  const handleFolderPosterChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    const targetId = posterTargetRef.current
+    e.target.value = ''
+    if (!file || !targetId) return
+
+    setSavingPosterId(targetId)
+    try {
+      const { url } = await uploadFile(file)
+      const res = await fetch('/api/edits/folders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: targetId, thumbnailUrl: url })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'خطا در ذخیره پوستر')
+
+      setFolders((prev) => prev.map((f) => (f.id === targetId ? { ...f, thumbnailUrl: url } : f)))
+      setCurrentFolder((prev) => (prev && prev.id === targetId ? { ...prev, thumbnailUrl: url } : prev))
+      toast('پوستر پوشه ذخیره شد', 'success')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'خطا در آپلود پوستر', 'error')
+    } finally {
+      setSavingPosterId(null)
+      posterTargetRef.current = null
+    }
+  }
+
+  const clearFolderPoster = async (folder: EditFolder) => {
+    if (savingPosterId) return
+    setSavingPosterId(folder.id)
+    try {
+      const res = await fetch('/api/edits/folders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: folder.id, thumbnailUrl: null })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'خطا در حذف پوستر')
+
+      setFolders((prev) => prev.map((f) => (f.id === folder.id ? { ...f, thumbnailUrl: null } : f)))
+      setCurrentFolder((prev) => (prev && prev.id === folder.id ? { ...prev, thumbnailUrl: null } : prev))
+      toast('پوستر پوشه حذف شد', 'success')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'خطا در حذف پوستر', 'error')
+    } finally {
+      setSavingPosterId(null)
+    }
+  }
+
   return (
     <div className="p-8">
+      <input
+        ref={folderPosterInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFolderPosterChange}
+      />
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
@@ -553,6 +622,36 @@ export default function EditsPage() {
                         <Folder className="w-16 h-16 text-violet-400" />
                       </div>
                     )}
+                    {/* پوستر پوشه: افزودن/تغییر/حذف — کلیک روی کارت را متوقف می‌کند */}
+                    <div className="absolute top-2 left-2 z-10 flex gap-1.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          pickFolderPoster(folder)
+                        }}
+                        title={folder.thumbnailUrl ? 'تغییر پوستر پوشه' : 'افزودن پوستر پوشه'}
+                        disabled={savingPosterId === folder.id}
+                        className="p-2 rounded-full bg-black/60 backdrop-blur-sm text-white hover:bg-violet-500/90 transition-colors disabled:opacity-70"
+                      >
+                        {savingPosterId === folder.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <ImagePlus className="w-4 h-4" />
+                        )}
+                      </button>
+                      {folder.thumbnailUrl && savingPosterId !== folder.id && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            clearFolderPoster(folder)
+                          }}
+                          title="حذف پوستر پوشه"
+                          className="p-2 rounded-full bg-black/60 backdrop-blur-sm text-white hover:bg-red-500/90 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <div className="bg-violet-500/80 rounded-full px-4 py-2 text-white font-medium flex items-center gap-2">
                         <FolderOpen className="w-4 h-4" />

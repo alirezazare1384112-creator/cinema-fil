@@ -8,9 +8,13 @@ export const dynamic = 'force-dynamic'
 const MIME: Record<string, string> = {
   '.jpg': 'image/jpeg',
   '.jpeg': 'image/jpeg',
+  '.jfif': 'image/jpeg',
   '.png': 'image/png',
   '.webp': 'image/webp',
   '.gif': 'image/gif',
+  '.bmp': 'image/bmp',
+  '.avif': 'image/avif',
+  '.ico': 'image/x-icon',
   '.mp4': 'video/mp4',
   '.m4v': 'video/x-m4v',
   '.webm': 'video/webm',

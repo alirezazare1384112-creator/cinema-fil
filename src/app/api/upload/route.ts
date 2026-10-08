@@ -8,7 +8,8 @@ import { pipeline } from 'stream/promises'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+const IMAGE_TYPES = ['image/jpeg', 'image/jfif', 'image/png', 'image/webp', 'image/gif', 'image/bmp', 'image/avif', 'image/x-icon', 'image/tiff']
+const IMAGE_EXT = ['.jpg', '.jpeg', '.jfif', '.png', '.webp', '.gif', '.bmp', '.avif', '.ico', '.tif', '.tiff']
 const SUB_EXT = ['.srt', '.vtt', '.sub', '.ass', '.ssa', '.txt']
 const VIDEO_EXT = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm', '.m4v', '.mpg', '.mpeg', '.ts', '.m2ts']
 const VIDEO_MIME = ['video/mp4', 'video/x-matroska', 'video/x-msvideo', 'video/quicktime', 'video/x-ms-wmv', 'video/x-flv', 'video/webm', 'video/x-m4v', 'video/mpeg', 'video/mp2t']
@@ -19,7 +20,11 @@ const SIZE_EXCEEDED = 'SIZE_EXCEEDED'
 
 function validateUpload(name: string, mime: string) {
   const ext = name.includes('.') ? path.extname(name).toLowerCase() : ''
-  const isImage = IMAGE_TYPES.includes(mime)
+  // هم بر اساس MIME و هم پسوند فایل؛ چون بعضی سیستم‌ها MIME عجیب می‌فرستند
+  const isImage =
+    IMAGE_TYPES.includes(mime) ||
+    IMAGE_EXT.includes(ext) ||
+    (mime.startsWith('image/') && mime !== 'image/svg+xml')
   const isSub =
     SUB_EXT.includes(ext) ||
     mime === 'application/x-subrip' ||
