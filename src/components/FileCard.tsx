@@ -134,7 +134,7 @@ const FileCard = React.memo(function FileCard({ file, onUpdate, onDelete, onPlay
   return (
     <div className="glass-card p-4 group hover:scale-[1.01] transition-all duration-300 animate-fade-in cursor-pointer" onDoubleClick={() => onPlay(file)} title="دوبار کلیک کنید تا در پلیر پیش‌فرض ویندوز باز شود">
       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePosterChange} />
-      <input ref={subtitleInputRef} type="file" accept=".srt,.vtt,text/plain" className="hidden" onChange={handleSubtitleChange} />
+      <input ref={subtitleInputRef} type="file" accept=".srt,.vtt,.ass,.ssa,.sub,.txt,text/plain" className="hidden" onChange={handleSubtitleChange} />
       <div className="flex items-start gap-4">
         <div className="w-20 h-28 rounded-xl bg-gradient-to-br from-violet-500/20 to-pink-500/20 flex items-center justify-center flex-shrink-0 overflow-hidden group-hover:ring-2 group-hover:ring-violet-500/50 transition-all">
           {displayPoster ? (

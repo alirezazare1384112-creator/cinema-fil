@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { spawn } from 'child_process'
 import path from 'path'
 import fs from 'fs'
+import { prisma } from '@/lib/prisma'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -308,6 +309,41 @@ function firstAvailableDesktopPlayer(): string | null {
   return null
 }
 
+/**
+ * زیرنویسِ ثبت‌شده برای این ویدیو را کنارِ خودِ فایل ویدیو با همان نام
+ * (مثل Se7en.1995.1080.srt) کپی می‌کند تا هر پخش‌کننده‌ای — PotPlayer،
+ * VLC، ویندوز — خودکار آن را بارگذاری کند. بدون این کپی، زیرنویس فقط
+ * در پایگاه‌داده ثبت بود و موقع پخش اصلاً استفاده نمی‌شد.
+ * اگر پوشه قابل‌نوشتن نباشد، بی‌صدا رد می‌شود و پخش ادامه پیدا می‌کند.
+ */
+const SUBTITLE_EXTS = ['.srt', '.vtt', '.ass', '.ssa', '.sub', '.txt']
+
+async function prepareAdjacentSubtitle(videoPath: string): Promise<string | null> {
+  try {
+    const record = await prisma.localFile.findFirst({
+      where: { filePath: videoPath },
+      select: { subtitle: true }
+    })
+    const subUrl = record?.subtitle
+    if (!subUrl || !subUrl.startsWith('/api/uploads/')) return null
+
+    const subDisk = path.join(process.cwd(), 'uploads', path.basename(subUrl.split('?')[0]))
+    if (!fs.existsSync(subDisk)) return null
+
+    const subExt = path.extname(subDisk).toLowerCase()
+    if (!SUBTITLE_EXTS.includes(subExt)) return null
+
+    const videoDir = path.dirname(videoPath)
+    const target = path.join(videoDir, path.basename(videoPath, path.extname(videoPath)) + subExt)
+
+    fs.copyFileSync(subDisk, target)
+    return target
+  } catch (error) {
+    console.warn('prepareAdjacentSubtitle skipped:', error instanceof Error ? error.message : error)
+    return null
+  }
+}
+
 interface OpenOutcome {
   success: boolean
   player: string
@@ -450,16 +486,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // زیرنویس ثبت‌شده را کنارِ ویدیو بگذار تا هنگام پخش استفاده شود
+    const subtitlePath = await prepareAdjacentSubtitle(resolved)
+    if (subtitlePath) console.log('play-external: subtitle prepared ->', subtitlePath)
+
     const outcome = await withPlayLock(() =>
       requestId === latestRequest ? openAndVerify(resolved) : Promise.resolve(superseded())
     )
 
     if (!outcome.success) {
       console.error('play-external: verification failed for', resolved, outcome)
-      return NextResponse.json({ error: outcome.error, ...outcome }, { status: 502 })
+      return NextResponse.json({ error: outcome.error, subtitlePath, ...outcome }, { status: 502 })
     }
 
-    return NextResponse.json({ resolvedPath: resolved, ...outcome })
+    return NextResponse.json({ resolvedPath: resolved, subtitlePath, ...outcome })
   } catch (error) {
     console.error('External play error:', error)
     return NextResponse.json({ error: 'خطا در باز کردن پخش‌کننده' }, { status: 500 })
