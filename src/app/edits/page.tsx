@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect, useRef, type ChangeEvent } from 'react'
-import { Scissors, Plus, Tag, Play, Trash2, Edit, Film, Upload, Loader2, Check, ArrowRight, Folder, FolderOpen, ImagePlus } from 'lucide-react'
+import { Scissors, Plus, Tag, Play, Trash2, Edit, Film, Upload, Loader2, Check, ArrowRight, Folder, FolderOpen, ImagePlus, Link as LinkIcon } from 'lucide-react'
 import type { MediaEdit, EditFolder } from '@/types'
 import { useToast } from '@/components/Toast'
 import { extractPoster } from '@/lib/videoPoster'
-import { uploadFile } from '@/lib/uploadFile'
+import { uploadFile, saveImageUrl } from '@/lib/uploadFile'
 
 export default function EditsPage() {
   const { toast } = useToast()
@@ -281,6 +281,56 @@ export default function EditsPage() {
       toast('پوستر پوشه حذف شد', 'success')
     } catch (err) {
       toast(err instanceof Error ? err.message : 'خطا در حذف پوستر', 'error')
+    } finally {
+      setSavingPosterId(null)
+    }
+  }
+
+  /* ---------- پوستر پوشه با لینک ---------- */
+  const [posterUrlFor, setPosterUrlFor] = useState<string | null>(null)
+  const [posterUrlValue, setPosterUrlValue] = useState('')
+
+  const toggleFolderPosterUrl = (folder: EditFolder) => {
+    if (savingPosterId) return
+    const opening = posterUrlFor !== folder.id
+    setPosterUrlFor(opening ? folder.id : null)
+    // اگر پوستر فعلی خودِ لینک است، همان را پیش‌پر کن
+    setPosterUrlValue(opening && folder.thumbnailUrl && /^https?:\/\//i.test(folder.thumbnailUrl) ? folder.thumbnailUrl : '')
+  }
+
+  const applyFolderPosterUrl = async (folder: EditFolder) => {
+    const url = posterUrlValue.trim()
+    if (!url) {
+      toast('آدرس تصویر را وارد کنید', 'warning')
+      return
+    }
+    if (!/^https?:\/\//i.test(url) && !url.startsWith('/')) {
+      toast('آدرس باید با http:// یا https:// شروع شود', 'warning')
+      return
+    }
+    if (savingPosterId) return
+
+    setSavingPosterId(folder.id)
+    try {
+      // لینک خارجی یک‌بار دانلود و به‌صورت محلی ذخیره می‌شود تا پوستر
+      // به سایتِ مبدأ وابسته نماند (لینک‌های داخلی همان‌طور می‌مانند)
+      const finalUrl = url.startsWith('/') ? url : await saveImageUrl(url)
+
+      const res = await fetch('/api/edits/folders', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: folder.id, thumbnailUrl: finalUrl })
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'خطا در ذخیره پوستر')
+
+      setFolders((prev) => prev.map((f) => (f.id === folder.id ? { ...f, thumbnailUrl: finalUrl } : f)))
+      setCurrentFolder((prev) => (prev && prev.id === folder.id ? { ...prev, thumbnailUrl: finalUrl } : prev))
+      setPosterUrlFor(null)
+      setPosterUrlValue('')
+      toast(url.startsWith('/') ? 'پوستر پوشه ذخیره شد' : 'لینک دریافت و به‌صورت محلی ذخیره شد', 'success')
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'خطا در دریافت تصویر از لینک', 'error')
     } finally {
       setSavingPosterId(null)
     }
@@ -622,14 +672,14 @@ export default function EditsPage() {
                         <Folder className="w-16 h-16 text-violet-400" />
                       </div>
                     )}
-                    {/* پوستر پوشه: افزودن/تغییر/حذف — کلیک روی کارت را متوقف می‌کند */}
-                    <div className="absolute top-2 left-2 z-10 flex gap-1.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                    {/* پوستر پوشه: افزودن با فایل / با لینک / حذف — کلیک روی کارت را متوقف می‌کند */}
+                    <div className="absolute top-2 left-2 z-20 flex gap-1.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
                           pickFolderPoster(folder)
                         }}
-                        title={folder.thumbnailUrl ? 'تغییر پوستر پوشه' : 'افزودن پوستر پوشه'}
+                        title={folder.thumbnailUrl ? 'تغییر پوستر پوشه (از سیستم)' : 'افزودن پوستر پوشه (از سیستم)'}
                         disabled={savingPosterId === folder.id}
                         className="p-2 rounded-full bg-black/60 backdrop-blur-sm text-white hover:bg-violet-500/90 transition-colors disabled:opacity-70"
                       >
@@ -638,6 +688,19 @@ export default function EditsPage() {
                         ) : (
                           <ImagePlus className="w-4 h-4" />
                         )}
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleFolderPosterUrl(folder)
+                        }}
+                        title="پوستر پوشه با لینک"
+                        disabled={savingPosterId === folder.id}
+                        className={`p-2 rounded-full bg-black/60 backdrop-blur-sm text-white transition-colors disabled:opacity-70 ${
+                          posterUrlFor === folder.id ? 'bg-violet-500/90' : 'hover:bg-violet-500/90'
+                        }`}
+                      >
+                        <LinkIcon className="w-4 h-4" />
                       </button>
                       {folder.thumbnailUrl && savingPosterId !== folder.id && (
                         <button
@@ -652,6 +715,35 @@ export default function EditsPage() {
                         </button>
                       )}
                     </div>
+                    {/* ورودی لینک پوستر */}
+                    {posterUrlFor === folder.id && (
+                      <div
+                        className="absolute bottom-2 left-2 right-2 z-20 flex items-center gap-1.5"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          value={posterUrlValue}
+                          onChange={(e) => setPosterUrlValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              applyFolderPosterUrl(folder)
+                            }
+                            if (e.key === 'Escape') setPosterUrlFor(null)
+                          }}
+                          placeholder="https://... آدرس تصویر"
+                          autoFocus
+                          className="flex-1 min-w-0 bg-black/75 backdrop-blur-sm border border-white/20 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-gray-400 focus:outline-none focus:border-violet-400"
+                        />
+                        <button
+                          onClick={() => applyFolderPosterUrl(folder)}
+                          disabled={savingPosterId === folder.id}
+                          className="px-2.5 py-1.5 rounded-lg bg-violet-500 hover:bg-violet-600 text-white text-xs font-medium transition-colors disabled:opacity-60"
+                        >
+                          {savingPosterId === folder.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'اعمال'}
+                        </button>
+                      </div>
+                    )}
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <div className="bg-violet-500/80 rounded-full px-4 py-2 text-white font-medium flex items-center gap-2">
                         <FolderOpen className="w-4 h-4" />
