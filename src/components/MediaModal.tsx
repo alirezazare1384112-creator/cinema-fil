@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { X, Star, Clock, Eye, Play, Save, FileVideo, Quote, HardDrive, Upload, Link as LinkIcon, Loader2 } from 'lucide-react'
 import { getBackdropURL, getPosterURL, genreNames } from '@/lib/tmdb'
 import { uploadFile, saveImageUrl, isImageBright } from '@/lib/uploadFile'
-import type { Media } from '@/types'
+import type { Media, MediaEdit } from '@/types'
 import { useToast } from '@/components/Toast'
 
 interface MediaModalProps {
@@ -18,6 +18,16 @@ const watchStatusConfig = {
   watched: { label: 'مشاهده شده', color: 'bg-green-500', icon: Eye },
   plan_to_watch: { label: 'قصد تماشا', color: 'bg-blue-500', icon: Clock },
   currently_watching: { label: 'در حال تماشا', color: 'bg-yellow-500', icon: Play }
+}
+
+function parseTags(raw?: string | null): string[] {
+  if (!raw) return []
+  try {
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed.filter((t): t is string => typeof t === 'string') : []
+  } catch {
+    return []
+  }
 }
 
 export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaModalProps) {
@@ -61,6 +71,32 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
       filesLoadedIdRef.current = null
     } finally {
       if (filesTokenRef.current === token) setLocalLoading(false)
+    }
+  }, [media])
+
+  /* ---------- ویرایش‌ها / فن‌آرت‌های همین فیلم ---------- */
+  const [mediaEdits, setMediaEdits] = useState<MediaEdit[]>([])
+  const [editsLoading, setEditsLoading] = useState(false)
+  const editsTokenRef = useRef(0)
+  const editsLoadedIdRef = useRef<string | null>(null)
+
+  const fetchMediaEdits = useCallback(async (force = false) => {
+    if (!media) return
+    if (!force && editsLoadedIdRef.current === media.id) return
+    const token = ++editsTokenRef.current
+    setEditsLoading(true)
+    try {
+      const res = await fetch(`/api/edits?mediaId=${media.id}`)
+      const data = await res.json()
+      if (editsTokenRef.current !== token) return
+      setMediaEdits(Array.isArray(data) ? data : [])
+      editsLoadedIdRef.current = media.id
+    } catch {
+      if (editsTokenRef.current !== token) return
+      setMediaEdits([])
+      editsLoadedIdRef.current = null
+    } finally {
+      if (editsTokenRef.current === token) setEditsLoading(false)
     }
   }, [media])
 
@@ -113,6 +149,11 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
       filesLoadedIdRef.current = null
       setLocalFiles([])
       void fetchLocalFiles(true)
+      // ویرایش‌های همین فیلم (تطبیق با پوشهٔ هم‌نام در سرور انجام می‌شود)
+      editsTokenRef.current++
+      editsLoadedIdRef.current = null
+      setMediaEdits([])
+      void fetchMediaEdits(true)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [media])
@@ -247,7 +288,10 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
               جزئیات
             </button>
             <button
-              onClick={() => setActiveTab('edits')}
+              onClick={() => {
+                setActiveTab('edits')
+                void fetchMediaEdits()
+              }}
               className={`pb-3 px-1 font-medium transition-colors ${
                 activeTab === 'edits'
                   ? 'text-violet-400 border-b-2 border-violet-400'
@@ -419,10 +463,79 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
           )}
 
           {activeTab === 'edits' && (
-            <div className="text-center py-12">
-              <FileVideo className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-              <p className="text-gray-400">هنوز ویرایش یا فن‌آرتی اضافه نشده</p>
-              <p className="text-sm text-gray-500 mt-2">کلیپ‌ها و ویرایش‌ها را به این رسانه اضافه کنید</p>
+            <div>
+              {editsLoading ? (
+                <p className="text-center text-gray-400 py-8 flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  در حال بارگذاری...
+                </p>
+              ) : mediaEdits.length === 0 ? (
+                <div className="text-center py-12">
+                  <FileVideo className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+                  <p className="text-gray-400">هنوز ویرایش یا فن‌آرتی برای این فیلم نیست</p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    در بخش «ویرایش‌ها» پوشه‌ای با همین نام فیلم بسازید؛ کلیپ‌هایش همین‌جا نمایش داده می‌شوند
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {mediaEdits.map((edit) => {
+                    const tagsList = parseTags(edit.tags)
+                    return (
+                      <div
+                        key={edit.id}
+                        className="group rounded-lg overflow-hidden bg-white/5 hover:ring-1 hover:ring-violet-500/50 transition-all"
+                      >
+                        <button
+                          onClick={() => handlePlayExternal(edit.videoUrl)}
+                          className="relative block w-full aspect-video cursor-pointer"
+                          title={`پخش «${edit.title}»`}
+                        >
+                          {edit.thumbnailUrl ? (
+                            <img
+                              src={edit.thumbnailUrl}
+                              alt={edit.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-violet-500/20 to-pink-500/20 flex items-center justify-center">
+                              <FileVideo className="w-8 h-8 text-violet-400" />
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <span className="flex items-center gap-1.5 bg-violet-500/80 rounded-full px-3 py-1.5 text-white text-sm font-medium">
+                              <Play className="w-4 h-4" />
+                              پخش
+                            </span>
+                          </div>
+                        </button>
+                        <div className="p-3">
+                          <p className="text-white text-sm font-medium truncate" title={edit.title}>
+                            {edit.title}
+                          </p>
+                          {edit.folder?.name && (
+                            <p className="text-xs text-gray-500 truncate mt-0.5" title={edit.folder.name}>
+                              پوشه: {edit.folder.name}
+                            </p>
+                          )}
+                          {tagsList.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {tagsList.slice(0, 3).map((t) => (
+                                <span
+                                  key={t}
+                                  className="px-1.5 py-0.5 rounded bg-white/10 text-gray-300 text-[10px]"
+                                >
+                                  {t}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
           )}
 

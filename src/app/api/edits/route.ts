@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+/**
+ * نرمال‌سازی نام برای تطبیق «نام پوشه» با «نام فیلم»:
+ * حروف کوچک، حذف نویسه‌های غیرحروف‌عددی و حذف سالِ انتهایی.
+ * مثال: "The Dark Knight 2008" و "The Dark Knight" → "thedarkknight"
+ */
+export function normalizeName(value: string): string {
+  const cleaned = (value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\u0600-\u06ff]+/g, '')
+  const withoutYear = cleaned.replace(/(?:19|20)\d{2}$/, '')
+  // اگر حذفِ سال همه‌چیز را پاک می‌کند (مثلاً نام فیلم «1917»)، همان نام بماند
+  return withoutYear.length >= 3 ? withoutYear : cleaned
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -21,10 +35,34 @@ export async function GET(request: NextRequest) {
     }
 
     const where: Record<string, unknown> = {}
-    if (mediaId) where.mediaId = mediaId
     if (folderId) where.folderId = folderId
     if (tag) {
       where.tags = { contains: tag }
+    }
+
+    /**
+     * فیلتر بر اساس رسانه: هم ادیت‌هایی که مستقیم به رسانه وصل‌اند
+     * (mediaId) و هم ادیت‌هایی که داخل پوشه‌ای با هم‌نامِ همان فیلم‌اند.
+     * (در حال حاضر اکثر ادیت‌ها داخل پوشه‌اند و mediaId خالی دارند؛
+     *  تطبیقِ نام با نرمال‌سازی انجام می‌شود تا «The Dark Knight 2008»
+     *  هم با «The Dark Knight» بخواند.)
+     */
+    if (mediaId) {
+      const media = await prisma.media.findUnique({
+        where: { id: mediaId },
+        select: { title: true }
+      })
+      const target = media ? normalizeName(media.title) : ''
+      const folderIds: string[] = []
+      if (target) {
+        const folders = await prisma.editFolder.findMany({ select: { id: true, name: true } })
+        folderIds.push(
+          ...folders.filter((f) => normalizeName(f.name) === target).map((f) => f.id)
+        )
+      }
+      const or: Record<string, unknown>[] = [{ mediaId }]
+      if (folderIds.length) or.push({ folderId: { in: folderIds } })
+      where.OR = or
     }
 
     const edits = await prisma.mediaEdit.findMany({
