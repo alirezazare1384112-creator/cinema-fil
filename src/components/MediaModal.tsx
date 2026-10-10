@@ -384,6 +384,33 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
 
           {activeTab === 'details' && (
             <div className="space-y-6">
+              {/* بدون فایل محلی؟ لینک‌های دانلودِ سایت — همان اول کار دیده شود */}
+              {localFiles.length === 0 && !localLoading && (
+                <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
+                  {linksLoading && (
+                    <p className="text-xs text-gray-400 flex items-center gap-2">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-400" />
+                      در حال دریافت لینک‌های دانلود از سایت فیلم…
+                    </p>
+                  )}
+                  {linksError && (
+                    <p className="text-xs text-red-400">
+                      {linksError} —{' '}
+                      <button onClick={loadLinks} className="underline">
+                        تلاش دوباره
+                      </button>
+                    </p>
+                  )}
+                  <DownloadLinks
+                    downloads={links?.downloads}
+                    subtitles={links?.subtitles}
+                    trailer={links?.trailer}
+                    title={media.title}
+                    className="mt-0"
+                  />
+                </div>
+              )}
+
               <div className="grid grid-cols-1 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-400 mb-2">نام فیلم</label>
@@ -519,29 +546,6 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
                 <Save className="w-4 h-4" />
                 ذخیره تغییرات
               </button>
-
-              {/* بدون فایل محلی؟ لینک‌های دانلود سایت همین‌جا (تب جزئیات) */}
-              {localFiles.length === 0 && !localLoading && (
-                <div className="mt-8 pt-6 border-t border-white/10">
-                  {linksLoading && (
-                    <p className="text-xs text-gray-500 flex items-center gap-2">
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      در حال دریافت لینک‌های دانلود از سایت فیلم…
-                    </p>
-                  )}
-                  {linksError && (
-                    <p className="text-xs text-red-400">
-                      {linksError} — <button onClick={loadLinks} className="underline">تلاش دوباره</button>
-                    </p>
-                  )}
-                  <DownloadLinks
-                    downloads={links?.downloads}
-                    subtitles={links?.subtitles}
-                    trailer={links?.trailer}
-                    title={media.title}
-                  />
-                </div>
-              )}
             </div>
           )}
 
