@@ -538,9 +538,24 @@ function slugFromUrl(url: string): string {
   }
 }
 
+/** پسوندهایی که لینکِ مستقیمِ دانلود محسوب می‌شوند */
+const FILE_LINK_RE = /\.(mkv|mp4|avi|mov|wmv|flv|ts|m2ts|m4v|rmvb|mpg|mpeg|zip|rar|7z)(\?|#|$)/i
+
+/** متنِ خالصِ یک قطعه HTML (بدون تگ) */
+function plainText(fragment: string): string {
+  return decodeEntities(fragment.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim()
+}
+
 /**
- * باکس دانلود: هر بلاک `download-list` یک گروه نسخه است (دوبله فارسی،
- * زیرنویس چسبیده، زبان اصلی…) و هر `<li>` یک کیفیت + لینک مستقیم دارد.
+ * باکس دانلود — دو ساختار متفاوت سایت را می‌پوشاند:
+ *
+ * فیلم: هر بلاک `download-list` یک نسخه (دوبله فارسی، زیرنویس چسبیده،
+ *       زبان اصلی) است و هر `<li>` یک کیفیت با یک لینک «دانلود مستقیم».
+ *
+ * سریال: هر فصل یک `download-season` است («فصل اول دوبله فارسی»)؛ داخل آن
+ *       بلاک‌های `download-list` با کیفیت‌های مختلف می‌آید و لینک‌ها
+ *       **تک‌تک قسمت‌ها** هستند (`قسمت 01`، `قسمت 02`، …) — برای هر قسمت
+ *       یک آدرس مستقیم جدا وجود دارد.
  */
 function extractDownloads(html: string): F2MDownload[] {
   const sectionMatch = html.match(/<section id="downloads"[\s\S]*?(?=<section |<footer|<\/main>)/)
@@ -548,25 +563,76 @@ function extractDownloads(html: string): F2MDownload[] {
   const out: F2MDownload[] = []
   const seen = new Set<string>()
 
+  // برچسب فصل‌ها (فقط صفحات سریال دارای download-season هستند)
+  const seasons: { at: number; label: string }[] = []
+  const seasonPattern = /<div class="download-season[\s\S]*?<button[^>]*>([\s\S]*?)<\/button>/g
+  let sm: RegExpExecArray | null
+  while ((sm = seasonPattern.exec(section))) {
+    // نشان «به اتمام رسیده» را حذف می‌کنیم
+    seasons.push({ at: sm.index, label: plainText(sm[1].replace(/<span[\s\S]*?<\/span>/g, '')) })
+  }
+
+  const anchorPattern = /<a\b([^>]*)>([\s\S]*?)<\/a>/g
   const blockPattern = /<div class="download-list[^"]*">([\s\S]*?)(?=<div class="download-list|<\/section>|$)/g
+  let seasonIdx = 0
   let block: RegExpExecArray | null
+
   while ((block = blockPattern.exec(section))) {
+    while (seasonIdx + 1 < seasons.length && seasons[seasonIdx + 1].at < block.index) seasonIdx++
+    const season = seasons.length && seasons[seasonIdx].at < block.index ? seasons[seasonIdx].label : ''
+
     const blockHtml = block[1]
     const titleMatch = blockHtml.match(/<p class="title">\s*<span>([\s\S]*?)<\/span>/)
-    const group = titleMatch ? decodeEntities(titleMatch[1]) : ''
+    const blockTitle = titleMatch ? plainText(titleMatch[1]) : ''
 
     for (const li of blockHtml.split(/<li[^>]*>/).slice(1)) {
       const qualityMatch = li.match(/<span class="text"[^>]*>([^<]+)<\/span>/)
-      const linkMatch =
-        li.match(/<a href="([^"]+)"[^>]*download[^>]*>\s*دانلود مستقیم/) ||
-        li.match(/<a href="([^"]+)"[^>]*\sdownload/)
-      if (!qualityMatch || !linkMatch) continue
-      const fileUrl = linkMatch[1].replace(/&amp;/g, '&')
-      const quality = decodeEntities(qualityMatch[1])
-      const key = `${quality}|${fileUrl}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      out.push({ group, quality, url: fileUrl })
+      const quality = qualityMatch ? plainText(qualityMatch[1]) : ''
+
+      // لینک‌های فایلِ داخل این ردیف (URL واحد → بهترین برچسبِ موجود)
+      const byUrl = new Map<string, string>()
+      const isMeaningful = (t: string) => Boolean(t) && t !== quality && t !== 'دانلود مستقیم'
+
+      anchorPattern.lastIndex = 0
+      let am: RegExpExecArray | null
+      while ((am = anchorPattern.exec(li))) {
+        const attrs = am[1]
+        const href = (attrs.match(/href="([^"]*)"/) || [])[1]?.replace(/&amp;/g, '&') || ''
+        const click = (attrs.match(/handleDownloadClick\('([^']+)'\)/) || [])[1]?.replace(/&amp;/g, '&') || ''
+
+        let fileUrl = ''
+        let trusted = false
+        if (href && !href.startsWith('#')) {
+          fileUrl = href
+          trusted =
+            FILE_LINK_RE.test(fileUrl) || /(\?|&)download=/i.test(fileUrl) || /\sdownload(\s|=|>)/i.test(attrs)
+        } else if (click) {
+          fileUrl = click
+          trusted = true // داخل handleDownloadClick سایت لینک دانلود می‌سازد
+        }
+        if (!fileUrl || !trusted) continue
+
+        const text = plainText(am[2])
+        const prev = byUrl.get(fileUrl)
+        if (!prev || (isMeaningful(text) && !isMeaningful(prev))) {
+          byUrl.set(fileUrl, isMeaningful(text) ? text : quality || text || 'دانلود')
+        }
+      }
+
+      if (byUrl.size === 0) continue
+
+      // گروه: فیلم → فقط نسخه (چیپ‌ها کیفیت‌ها هستند).
+      // سریال → فصل + نسخه + کیفیت، چون هر کیفیت قسمت‌های خودش را دارد.
+      const group = season
+        ? [season, blockTitle, quality].filter(Boolean).join(' — ')
+        : blockTitle || quality
+
+      for (const [fileUrl, label] of byUrl) {
+        const key = `${group}|${fileUrl}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        out.push({ group, quality: label, url: fileUrl })
+      }
     }
   }
 
