@@ -24,6 +24,7 @@ model Media {
   watchDate     DateTime?
   category      String?   // 'movie' | 'series'
   genres        String?   // JSON array stored as string
+  detailUrl     String?   // آدرس صفحهٔ همین اثر در سایت فیلم (برای لینک‌های دانلود)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 

@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Star, Play, Plus, Check, Clapperboard, Download, Subtitles, Copy } from 'lucide-react'
+import { X, Star, Play, Plus, Check, Clapperboard } from 'lucide-react'
 import { getBackdropURL, getPosterURL, genreLabels, viaImageProxy } from '@/lib/tmdb'
 import { getDetails } from '@/lib/details-cache'
+import DownloadLinks from '@/components/DownloadLinks'
 import type { TMDBMovie, TMDBTVShow, Media } from '@/types'
 
 interface MediaPreviewModalProps {
@@ -32,18 +33,6 @@ export default function MediaPreviewModal({ item, isOpen, onClose, onAdded }: Me
   const [loadingDetails, setLoadingDetails] = useState(false)
   const [adding, setAdding] = useState(false)
   const [added, setAdded] = useState<Media | null>(null)
-  const [copiedUrl, setCopiedUrl] = useState<string | null>(null)
-
-  const copyLink = async (url: string) => {
-    try {
-      await navigator.clipboard.writeText(url)
-      setCopiedUrl(url)
-      setTimeout(() => setCopiedUrl((prev) => (prev === url ? null : prev)), 1600)
-    } catch {
-      // مرورگر اجازهٔ کپی نداد
-    }
-  }
-
   const title = item ? ('title' in item ? item.title : item.name) : ''
   const year = item
     ? (('release_date' in item ? item.release_date : item.first_air_date) || '').split('-')[0]
@@ -102,7 +91,8 @@ export default function MediaPreviewModal({ item, isOpen, onClose, onAdded }: Me
           mediaType,
           releaseDate,
           rating: item.vote_average,
-          genres: item.genre_names?.length ? item.genre_names : item.genre_ids
+          genres: item.genre_names?.length ? item.genre_names : item.genre_ids,
+          detailUrl: item.source === 'f2m' ? item.detail_url : null
         })
       })
       if (response.ok) {
@@ -116,27 +106,6 @@ export default function MediaPreviewModal({ item, isOpen, onClose, onAdded }: Me
       setAdding(false)
     }
   }
-
-  // گروه‌بندی لینک‌های دانلود بر اساس نوع نسخه (دوبله فارسی، زیرنویس چسبیده، …)
-  const downloadGroups: { group: string; items: { quality: string; url: string }[] }[] = []
-  for (const d of details?.downloads || []) {
-    const key = d.group || 'سایر'
-    let group = downloadGroups.find((x) => x.group === key)
-    if (!group) {
-      group = { group: key, items: [] }
-      downloadGroups.push(group)
-    }
-    group.items.push({ quality: d.quality, url: d.url })
-  }
-
-  const youtubeKey =
-    details?.trailerKey ||
-    (details?.trailer
-      ? (details.trailer.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|embed\/)([\w-]{6,})/) || [])[1]
-      : undefined)
-  const trailerMp4 =
-    !youtubeKey && details?.trailer && !details.trailer.includes('youtube') ? details.trailer : null
-  const subtitleLinks = details?.subtitles || []
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -240,111 +209,14 @@ export default function MediaPreviewModal({ item, isOpen, onClose, onAdded }: Me
             </div>
           )}
 
-          {downloadGroups.length > 0 && (
-            <div className="mt-6">
-              <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
-                <Download className="w-4 h-4 text-emerald-400" />
-                لینک دانلود
-                <span className="text-gray-500 font-normal text-xs">
-                  ({details?.downloads?.length} لینک)
-                </span>
-              </h3>
-              <div className="space-y-3">
-                {downloadGroups.map((g) => (
-                  <div key={g.group} className="rounded-xl bg-white/5 border border-white/10 p-3">
-                    <p className="text-xs text-violet-300 font-medium mb-2">{g.group}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {g.items.map((d) => (
-                        <span
-                          key={`${d.quality}-${d.url}`}
-                          className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 overflow-hidden"
-                        >
-                          <a
-                            href={d.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-emerald-300 hover:bg-emerald-500/25 transition-colors"
-                            title={`دانلود ${d.quality}`}
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                            {d.quality}
-                          </a>
-                          <button
-                            onClick={() => copyLink(d.url)}
-                            title="کپی لینک"
-                            className="px-2 py-1.5 text-emerald-300/70 hover:text-emerald-200 hover:bg-emerald-500/25 transition-colors border-r border-emerald-500/20"
-                          >
-                            {copiedUrl === d.url ? (
-                              <Check className="w-3.5 h-3.5 text-green-400" />
-                            ) : (
-                              <Copy className="w-3.5 h-3.5" />
-                            )}
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <p className="text-[11px] text-gray-500 mt-2">
-                لینک‌ها مستقیم و از سایت مبدأ هستند؛ اگر دانلود شروع نشد فیلترشکن را خاموش کنید.
-              </p>
-            </div>
-          )}
-
-          {subtitleLinks.length > 0 && (
-            <div className="mt-6">
-              <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
-                <Subtitles className="w-4 h-4 text-sky-400" />
-                زیرنویس
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {subtitleLinks.map((s) => (
-                  <a
-                    key={s.url}
-                    href={s.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-sky-500/15 border border-sky-500/20 text-xs text-sky-200 hover:bg-sky-500/25 transition-colors"
-                  >
-                    <Subtitles className="w-3.5 h-3.5" />
-                    {s.label}
-                  </a>
-                ))}
-              </div>
-              <p className="text-[11px] text-gray-500 mt-2">
-                نسخه‌های «زیرنویس فارسی چسبیده» همان لینک‌های دانلود بالا هستند.
-              </p>
-            </div>
-          )}
-
-          {(youtubeKey || trailerMp4) && (
-            <div className="mt-6">
-              <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
-                <Play className="w-4 h-4 text-pink-400" />
-                تریلر
-              </h3>
-              {youtubeKey ? (
-                <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-black">
-                  <iframe
-                    src={`https://www.youtube.com/embed/${youtubeKey}`}
-                    title={`تریلر ${title}`}
-                    className="absolute inset-0 w-full h-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                </div>
-              ) : (
-                <video
-                  src={trailerMp4 as string}
-                  poster={posterSrc || undefined}
-                  controls
-                  preload="none"
-                  className="w-full max-h-80 rounded-xl bg-black"
-                />
-              )}
-            </div>
-          )}
+          <DownloadLinks
+            downloads={details?.downloads}
+            subtitles={details?.subtitles}
+            trailer={details?.trailer}
+            trailerKey={details?.trailerKey}
+            title={title}
+            posterSrc={posterSrc}
+          />
 
           {loadingDetails && (
             <p className="text-sm text-gray-500 mt-6">در حال بارگذاری اطلاعات بیشتر...</p>

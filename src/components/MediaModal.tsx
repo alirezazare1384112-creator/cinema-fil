@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { X, Star, Clock, Eye, Play, Save, FileVideo, Quote, HardDrive, Upload, Link as LinkIcon, Loader2 } from 'lucide-react'
+import { X, Star, Clock, Eye, Play, Save, FileVideo, Quote, HardDrive, Upload, Link as LinkIcon, Loader2, Download } from 'lucide-react'
 import { getBackdropURL, getPosterURL, genreNames } from '@/lib/tmdb'
 import { uploadFile, saveImageUrl, isImageBright } from '@/lib/uploadFile'
+import DownloadLinks from '@/components/DownloadLinks'
 import type { Media, MediaEdit } from '@/types'
 import { useToast } from '@/components/Toast'
 
@@ -47,6 +48,15 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
   const [posterUploading, setPosterUploading] = useState(false)
   const [posterUrlInput, setPosterUrlInput] = useState('')
   const [showPosterUrl, setShowPosterUrl] = useState(false)
+
+  // لینک‌های دانلود/زیرنویس/تریلر از سایت فیلم (وقتی فایل محلی نداریم)
+  const [links, setLinks] = useState<{
+    downloads?: { group: string; quality: string; url: string }[]
+    subtitles?: { label: string; url: string }[]
+    trailer?: string | null
+  } | null>(null)
+  const [linksLoading, setLinksLoading] = useState(false)
+  const [linksError, setLinksError] = useState('')
   const posterInputRef = useRef<HTMLInputElement>(null)
 
   // شمارهٔ درخواست تا جوابِ دیررسیدهٔ فیلمِ قبلی، روی فیلمِ جدید اعمال نشود
@@ -154,9 +164,59 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
       editsLoadedIdRef.current = null
       setMediaEdits([])
       void fetchMediaEdits(true)
+      // لینک‌های دانلودِ رسانهٔ قبلی را نگه ندار
+      setLinks(null)
+      setLinksError('')
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [media])
+
+  /** دریافت لینک‌های دانلود/زیرنویس/تریلر این رسانه از سایت فیلم */
+  const loadLinks = async () => {
+    if (!media || linksLoading) return
+    setLinksLoading(true)
+    setLinksError('')
+    try {
+      const params = new URLSearchParams()
+      if (media.detailUrl) {
+        params.set('detailUrl', media.detailUrl)
+      } else {
+        // رسانه‌های قدیمی آدرس ندارند → با عنوان + سال پیدا می‌کنیم
+        params.set('title', media.title)
+        params.set('year', (media.releaseDate || '').split('-')[0] || '')
+        params.set('mediaType', media.mediaType || '')
+      }
+      const res = await fetch(`/api/f2m?action=links&${params.toString()}`)
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error || 'لینک‌ها پیدا نشد')
+      setLinks(data)
+      // آدرس دقیقِ همین اثر را ذخیره کن تا دفعات بعد سریع‌تر و دقیق‌تر باشد
+      if (!media.detailUrl && data.detailUrl) {
+        fetch('/api/media', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: media.id, detailUrl: data.detailUrl })
+        }).catch(() => {})
+      }
+    } catch (e) {
+      setLinksError(e instanceof Error ? e.message : 'دریافت لینک‌ها ناموفق بود')
+    } finally {
+      setLinksLoading(false)
+    }
+  }
+
+  // وقتی رسانه فایل محلی ندارد، لینک‌های دانلودِ سایت فیلم را خودکار بیاور
+  // (یک بار؛ بعد از آن stateها مانع تکرار می‌شوند و دکمه برای تلاش دوباره هست)
+  useEffect(() => {
+    if (!isOpen || !media) return
+    if (activeTab !== 'files' || localLoading || localFiles.length > 0) return
+    if (links || linksLoading || linksError) return
+    const timer = setTimeout(() => {
+      void loadLinks()
+    }, 0)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, media, activeTab, localLoading, localFiles.length, links, linksLoading, linksError])
 
   if (!isOpen || !media) return null
 
@@ -584,6 +644,47 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
                   </div>
                 ))
               )}
+            </div>
+          )}
+
+          {activeTab === 'files' && (
+            <div className="mt-8 pt-6 border-t border-white/10">
+              <div className="flex items-center justify-between mb-3 gap-3">
+                <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+                  <Download className="w-4 h-4 text-emerald-400" />
+                  لینک‌های دانلود از سایت فیلم
+                </h3>
+                {!links && (
+                  <button
+                    onClick={loadLinks}
+                    disabled={linksLoading}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/15 border border-emerald-500/25 text-emerald-300 text-sm hover:bg-emerald-500/25 transition-colors disabled:opacity-60 disabled:cursor-wait shrink-0"
+                  >
+                    {linksLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Download className="w-4 h-4" />
+                    )}
+                    {linksLoading ? 'در حال دریافت…' : 'نمایش لینک‌ها'}
+                  </button>
+                )}
+              </div>
+
+              {linksError && <p className="text-xs text-red-400 mb-3">{linksError}</p>}
+
+              {!links && !linksLoading && !linksError && (
+                <p className="text-[11px] text-gray-500">
+                  فایلی برای این رسانه نداری؟ اینجا لینک دانلود نسخه‌ها، زیرنویس و تریلر را بگیر.
+                </p>
+              )}
+
+              <DownloadLinks
+                downloads={links?.downloads}
+                subtitles={links?.subtitles}
+                trailer={links?.trailer}
+                title={media.title}
+                className="mt-2"
+              />
             </div>
           )}
         </div>

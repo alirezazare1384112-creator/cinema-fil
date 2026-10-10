@@ -69,7 +69,8 @@ export async function POST(request: NextRequest) {
         personalReview: body.personalReview || null,
         notes: body.notes || null,
         watchDate: body.watchDate || null,
-        genres: body.genres ? JSON.stringify(body.genres) : null
+        genres: body.genres ? JSON.stringify(body.genres) : null,
+        detailUrl: body.detailUrl || null
       }
     })
 

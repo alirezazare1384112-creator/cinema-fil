@@ -401,6 +401,60 @@ export async function fetchList(options: {
   return { results, hasMore: parts.some((part) => part.hasMore) }
 }
 
+/**
+ * آدرس صفحهٔ یک عنوان در سایت فیلم را پیدا می‌کند — برای رسانه‌هایی که هنگام
+ * افزودن به کتابخانه آدرس ذخیره نشده است. اول با همان نوع (فیلم/سریال)
+ * جستجو می‌کند و اگر چیزی نیافت، کل سایت را می‌گردد؛ سپس نزدیک‌ترین عنوان
+ * (و در صورت امکان با همان سال) را برمی‌گرداند.
+ */
+export async function resolveDetailUrl(
+  title: string,
+  year?: string | null,
+  mediaType?: string | null
+): Promise<string | null> {
+  const query = (title || '').trim()
+  if (!query) return null
+
+  const wanted: F2MType[] = mediaType === 'movie' || mediaType === 'tv' ? [mediaType, 'all'] : ['all']
+
+  let results: F2MItem[] = []
+  for (const type of wanted) {
+    try {
+      const list = await fetchList({ type, sortby: 'popular', page: 1, query })
+      if (list.results.length) {
+        results = list.results
+        break
+      }
+    } catch {
+      // تلاش بعدی (با کل سایت)
+    }
+  }
+  if (!results.length) return null
+
+  const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
+  const want = norm(query)
+  const score = (candidate: string) => {
+    const t = norm(candidate)
+    if (t === want) return 3
+    if (t.startsWith(want) || want.startsWith(t)) return 2
+    if (t.includes(want) || want.includes(t)) return 1
+    return 0
+  }
+
+  const ranked = results
+    .map((item) => ({ item, s: score(item.title) }))
+    .filter((x) => x.s > 0)
+    .sort((a, b) => b.s - a.s)
+  const pool = ranked.length ? ranked : results.map((item) => ({ item, s: 0 }))
+
+  if (year && year.length === 4) {
+    const byYear = pool.filter((x) => (x.item.release_date || '').startsWith(year))
+    if (byYear.length) return byYear[0].item.detail_url
+  }
+
+  return pool[0].item.detail_url
+}
+
 function extractBlock(html: string, id: string): string {
   const match = html.match(new RegExp(`<div id="${id}">([\\s\\S]*?)</div>`))
   return match ? match[1] : ''

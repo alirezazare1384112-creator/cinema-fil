@@ -15,6 +15,8 @@ export interface Media {
   watchDate?: Date | null
   genres?: string | null
   category?: string | null
+  /** آدرس صفحهٔ همین اثر در سایت فیلم (برای لینک‌های دانلود) */
+  detailUrl?: string | null
   createdAt: Date
   updatedAt: Date
   localFiles?: LocalFile[]

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { fetchDetails, fetchGenres, fetchList, type F2MSort, type F2MType } from '@/lib/f2m'
+import { fetchDetails, fetchGenres, fetchList, resolveDetailUrl, type F2MSort, type F2MType } from '@/lib/f2m'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,6 +35,22 @@ export async function GET(request: NextRequest) {
         }
         const details = await fetchDetails(url)
         return NextResponse.json(details)
+      }
+
+      case 'links': {
+        // آدرسِ دقیق را داریم؟ سریع. نداریم؟ با عنوان + سال پیدا می‌کنیم.
+        const knownUrl = searchParams.get('detailUrl') || ''
+        const title = searchParams.get('title') || ''
+        const year = searchParams.get('year') || ''
+        const mediaType = searchParams.get('mediaType') || ''
+
+        const url = knownUrl || (await resolveDetailUrl(title, year, mediaType))
+        if (!url) {
+          return NextResponse.json({ error: 'این عنوان در سایت فیلم پیدا نشد' }, { status: 404 })
+        }
+
+        const details = await fetchDetails(url)
+        return NextResponse.json({ ...details, detailUrl: url })
       }
 
       default:
