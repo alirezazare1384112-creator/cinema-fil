@@ -1,17 +1,20 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Settings, Save, Key, Database, Info, ExternalLink } from 'lucide-react'
+import { Settings, Save, Key, Database, Info, ExternalLink, Palette, Check } from 'lucide-react'
+import { THEMES, THEME_STORAGE_KEY, applyTheme, getStoredThemeId } from '@/lib/themes'
 
 export default function SettingsPage() {
   const [tmdbApiKey, setTmdbApiKey] = useState('')
   const [saved, setSaved] = useState(false)
+  const [activeTheme, setActiveTheme] = useState('default')
 
   useEffect(() => {
     const savedKey = localStorage.getItem('tmdb_api_key')
     if (savedKey) {
       setTmdbApiKey(savedKey)
     }
+    setActiveTheme(getStoredThemeId())
   }, [])
 
   const handleSave = () => {
@@ -31,6 +34,74 @@ export default function SettingsPage() {
       </div>
 
       <div className="space-y-6">
+        <div className="glass-card p-6">
+          <h2 className="text-lg font-semibold text-white mb-1 flex items-center gap-2">
+            <Palette className="w-5 h-5 text-violet-400" />
+            تم و ظاهر
+          </h2>
+          <p className="text-gray-400 mb-5 text-sm">
+            تمی بر اساس شخصیت‌ها و فیلم/سریال‌های محبوب انتخاب کن؛ همان لحظه در کل برنامه اعمال و برای دفعات بعد ذخیره می‌شود.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {THEMES.map((theme) => {
+              const isActive = activeTheme === theme.id
+              return (
+                <button
+                  key={theme.id}
+                  onClick={() => {
+                    applyTheme(theme.id)
+                    setActiveTheme(theme.id)
+                  }}
+                  className={`relative text-right rounded-xl border p-4 transition-all ${
+                    isActive ? 'bg-white/10' : 'bg-white/[0.02] hover:bg-white/[0.06] border-white/10 hover:border-white/25'
+                  }`}
+                  style={isActive ? { borderColor: theme.swatch[0], boxShadow: `0 0 0 1px ${theme.swatch[0]}, 0 8px 24px -12px ${theme.swatch[0]}` } : undefined}
+                >
+                  {isActive && (
+                    <span
+                      className="absolute top-3 left-3 w-5 h-5 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: theme.swatch[0] }}
+                    >
+                      <Check className="w-3.5 h-3.5 text-white" />
+                    </span>
+                  )}
+
+                  <span
+                    className="block h-2.5 w-full rounded-full mb-3"
+                    style={{ background: `linear-gradient(90deg, ${theme.swatch.join(', ')})` }}
+                  />
+
+                  <span className="block text-sm font-semibold text-white">{theme.name}</span>
+                  <span className="block text-[11px] text-gray-500 mt-0.5" dir="ltr" style={{ textAlign: 'right' }}>
+                    {theme.source}
+                  </span>
+                  <span className="block text-xs text-gray-400 mt-1">{theme.description}</span>
+
+                  <span className="flex items-center gap-2 mt-3">
+                    <span
+                      className="px-2.5 py-1 rounded-lg text-[11px] font-medium text-white"
+                      style={{ backgroundColor: theme.swatch[0] }}
+                    >
+                      دکمه
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg text-[11px]" style={{ backgroundColor: `${theme.swatch[1]}26`, color: theme.swatch[1] }}>
+                      کارت
+                    </span>
+                    <span className="text-[11px]" style={{ color: theme.swatch[0] }}>
+                      متن لهجه‌ای
+                    </span>
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+
+          <p className="text-xs text-gray-500 mt-4">
+            انتخاب تو در همین مرورگر ذخیره می‌شود (کلید <code className="text-gray-400" dir="ltr">{THEME_STORAGE_KEY}</code>).
+          </p>
+        </div>
+
         <div className="glass-card p-6">
           <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
             <Key className="w-5 h-5 text-violet-400" />

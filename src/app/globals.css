@@ -1,18 +1,55 @@
 @import "tailwindcss";
 
+/*
+ * رنگ‌های لهجه‌ایِ تیلویند را به متغیرهای تم وصل می‌کنیم؛ با `inline` همهٔ
+ * کلاس‌های violet/pink (و نسخه‌های شفاف‌شان مثل violet-500/20) خودکار از تم
+ * پیروی می‌کنند؛ یعنی هر تم تازه فقط با چند متغیر کل برنامه رنگ می‌گیرد.
+ */
+@theme inline {
+  --color-violet-500: var(--accent);
+  --color-violet-400: var(--accent-text);
+  --color-violet-300: var(--accent-text-soft);
+  --color-violet-200: var(--accent-text-soft);
+  --color-violet-600: var(--accent-dark);
+  --color-pink-500: var(--accent-2);
+  --color-pink-400: var(--accent-2-text);
+  --color-pink-600: var(--accent-2-dark);
+}
+
 :root {
   --background: #0a0a0f;
   --foreground: #ededed;
   --accent: #8b5cf6;
+  --accent-text: #a78bfa;
+  --accent-text-soft: #c4b5fd;
+  --accent-dark: #7c3aed;
+  --accent-2: #ec4899;
+  --accent-2-text: #f472b6;
+  --accent-2-dark: #be185d;
   --accent-glow: rgba(139, 92, 246, 0.4);
   --glass-bg: rgba(255, 255, 255, 0.05);
   --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-hover-border: rgba(139, 92, 246, 0.3);
+  --glow-1: rgba(139, 92, 246, 0.2);
+  --glow-2: rgba(236, 72, 153, 0.14);
 }
 
 body {
-  background: var(--background);
   color: var(--foreground);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* نور پس‌زمینهٔ تم — بر اساس متغیرهای هر تم رنگ عوض می‌کند */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(70vw 60vh at 12% -12%, var(--glow-1), transparent 60%),
+    radial-gradient(55vw 55vh at 92% 8%, var(--glow-2), transparent 60%),
+    var(--background);
 }
 
 select {
@@ -34,7 +71,7 @@ select option {
 
 .glass-card:hover {
   background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(139, 92, 246, 0.3);
+  border-color: var(--glass-hover-border);
 }
 
 .neon-glow {
@@ -64,7 +101,7 @@ select option {
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(135deg, #8b5cf6, #ec4899, #8b5cf6);
+  background: linear-gradient(135deg, var(--accent), var(--accent-2), var(--accent));
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
@@ -76,7 +113,7 @@ select option {
     box-shadow: 0 0 20px var(--accent-glow);
   }
   50% {
-    box-shadow: 0 0 30px var(--accent-glow), 0 0 50px rgba(139, 92, 246, 0.3);
+    box-shadow: 0 0 30px var(--accent-glow), 0 0 50px var(--accent-glow);
   }
 }
 
@@ -112,4 +149,150 @@ select option {
 
 .animate-slide-in {
   animation: slide-in 0.3s ease-out;
+}
+
+/* ─────────────── تم‌ها (بر اساس شخصیت‌ها و فیلم/سریال‌ها) ─────────────── */
+
+[data-theme='default'] {
+  --background: #0a0a0f;
+  --accent: #8b5cf6;
+  --accent-text: #a78bfa;
+  --accent-text-soft: #c4b5fd;
+  --accent-dark: #7c3aed;
+  --accent-2: #ec4899;
+  --accent-2-text: #f472b6;
+  --accent-2-dark: #be185d;
+  --accent-glow: rgba(139, 92, 246, 0.4);
+  --glass-hover-border: rgba(139, 92, 246, 0.3);
+  --glow-1: rgba(139, 92, 246, 0.2);
+  --glow-2: rgba(236, 72, 153, 0.14);
+}
+
+/* شوالیهٔ تاریکی — Batman */
+[data-theme='batman'] {
+  --background: #05070d;
+  --accent: #3b82f6;
+  --accent-text: #60a5fa;
+  --accent-text-soft: #93c5fd;
+  --accent-dark: #1d4ed8;
+  --accent-2: #94a3b8;
+  --accent-2-text: #cbd5e1;
+  --accent-2-dark: #475569;
+  --accent-glow: rgba(59, 130, 246, 0.45);
+  --glass-hover-border: rgba(59, 130, 246, 0.35);
+  --glow-1: rgba(59, 130, 246, 0.22);
+  --glow-2: rgba(148, 163, 184, 0.12);
+}
+
+/* جوکر — Joker */
+[data-theme='joker'] {
+  --background: #0b0710;
+  --accent: #22c55e;
+  --accent-text: #4ade80;
+  --accent-text-soft: #86efac;
+  --accent-dark: #15803d;
+  --accent-2: #a855f7;
+  --accent-2-text: #c084fc;
+  --accent-2-dark: #7e22ce;
+  --accent-glow: rgba(34, 197, 94, 0.4);
+  --glass-hover-border: rgba(34, 197, 94, 0.35);
+  --glow-1: rgba(34, 197, 94, 0.2);
+  --glow-2: rgba(168, 85, 247, 0.2);
+}
+
+/* مرد عنکبوتی — Spider-Man */
+[data-theme='spiderman'] {
+  --background: #0a0810;
+  --accent: #ef4444;
+  --accent-text: #f87171;
+  --accent-text-soft: #fca5a5;
+  --accent-dark: #b91c1c;
+  --accent-2: #3b82f6;
+  --accent-2-text: #60a5fa;
+  --accent-2-dark: #1d4ed8;
+  --accent-glow: rgba(239, 68, 68, 0.4);
+  --glass-hover-border: rgba(239, 68, 68, 0.35);
+  --glow-1: rgba(239, 68, 68, 0.2);
+  --glow-2: rgba(59, 130, 246, 0.18);
+}
+
+/* ماتریکس — The Matrix */
+[data-theme='matrix'] {
+  --background: #020604;
+  --accent: #22c55e;
+  --accent-text: #4ade80;
+  --accent-text-soft: #a7f3d0;
+  --accent-dark: #15803d;
+  --accent-2: #14b8a6;
+  --accent-2-text: #2dd4bf;
+  --accent-2-dark: #0f766e;
+  --accent-glow: rgba(34, 197, 94, 0.45);
+  --glass-bg: rgba(16, 60, 30, 0.16);
+  --glass-hover-border: rgba(34, 197, 94, 0.4);
+  --glow-1: rgba(34, 197, 94, 0.24);
+  --glow-2: rgba(20, 184, 166, 0.14);
+}
+
+/* برکینگ بد — Breaking Bad */
+[data-theme='breakingbad'] {
+  --background: #060a06;
+  --accent: #65a30d;
+  --accent-text: #a3e635;
+  --accent-text-soft: #d9f99d;
+  --accent-dark: #4d7c0f;
+  --accent-2: #eab308;
+  --accent-2-text: #facc15;
+  --accent-2-dark: #a16207;
+  --accent-glow: rgba(101, 163, 13, 0.4);
+  --glass-hover-border: rgba(101, 163, 13, 0.35);
+  --glow-1: rgba(101, 163, 13, 0.2);
+  --glow-2: rgba(234, 171, 8, 0.16);
+}
+
+/* هری پاتر — Harry Potter */
+[data-theme='harrypotter'] {
+  --background: #07060e;
+  --accent: #d4af37;
+  --accent-text: #e8c766;
+  --accent-text-soft: #f5e3a3;
+  --accent-dark: #a17c1e;
+  --accent-2: #9f1239;
+  --accent-2-text: #f43f5e;
+  --accent-2-dark: #7f1d1d;
+  --accent-glow: rgba(212, 175, 55, 0.4);
+  --glass-hover-border: rgba(212, 175, 55, 0.35);
+  --glow-1: rgba(212, 175, 55, 0.18);
+  --glow-2: rgba(159, 18, 57, 0.2);
+}
+
+/* جنگ ستارگان — Star Wars */
+[data-theme='starwars'] {
+  --background: #050505;
+  --accent: #facc15;
+  --accent-text: #fde047;
+  --accent-text-soft: #fef08a;
+  --accent-dark: #ca8a04;
+  --accent-2: #38bdf8;
+  --accent-2-text: #7dd3fc;
+  --accent-2-dark: #0284c7;
+  --accent-glow: rgba(250, 204, 21, 0.4);
+  --glass-hover-border: rgba(250, 204, 21, 0.35);
+  --glow-1: rgba(250, 204, 21, 0.16);
+  --glow-2: rgba(56, 189, 248, 0.18);
+}
+
+/* بازی تاج و تخت — Game of Thrones */
+[data-theme='got'] {
+  --background: #060810;
+  --accent: #7dd3fc;
+  --accent-text: #bae6fd;
+  --accent-text-soft: #e0f2fe;
+  --accent-dark: #0369a1;
+  --accent-2: #fb923c;
+  --accent-2-text: #fdba74;
+  --accent-2-dark: #c2410c;
+  --accent-glow: rgba(125, 211, 252, 0.4);
+  --glass-hover-border: rgba(125, 211, 252, 0.35);
+  --glow-1: rgba(125, 211, 252, 0.18);
+  --glow-2: rgba(251, 146, 60, 0.16);
 }

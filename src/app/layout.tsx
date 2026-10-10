@@ -21,7 +21,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fa" dir="rtl" className={`${inter.variable} h-full antialiased`}>
-      <body className="min-h-full bg-[#0a0a0f]">
+      <head>
+        {/* اعمال تم ذخیره‌شده قبل از رندر تا چشمکِ رنگ پیش‌فرض دیده نشود */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('cinema_theme');document.documentElement.setAttribute('data-theme',t||'default');}catch(e){document.documentElement.setAttribute('data-theme','default');}})();`,
+          }}
+        />
+      </head>
+      <body className="min-h-full">
         <ToastProvider>
           <Sidebar />
           <main className="mr-64 min-h-screen">
