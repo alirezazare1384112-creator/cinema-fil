@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { X, Star, Play, Plus, Check, Clapperboard, Download, Subtitles, Copy } from 'lucide-react'
-import { getBackdropURL, getPosterURL, genreLabels } from '@/lib/tmdb'
+import { getBackdropURL, getPosterURL, genreLabels, viaImageProxy } from '@/lib/tmdb'
 import { getDetails } from '@/lib/details-cache'
 import type { TMDBMovie, TMDBTVShow, Media } from '@/types'
 
@@ -24,7 +24,7 @@ interface Details {
 
 function fullSizePoster(url: string | null | undefined): string | null {
   if (!url || !url.startsWith('http')) return null
-  return url.replace(/-\d+x\d+(\.[a-z0-9]+)$/i, '$1')
+  return viaImageProxy(url.replace(/-\d+x\d+(\.[a-z0-9]+)$/i, '$1'))
 }
 
 export default function MediaPreviewModal({ item, isOpen, onClose, onAdded }: MediaPreviewModalProps) {

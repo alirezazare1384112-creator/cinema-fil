@@ -109,9 +109,26 @@ export function genreLabels(
   return genreNames(ids)
 }
 
+/**
+ * تصاویر سایت فیلم را از پروکسیِ سرور خودمان می‌فرستیم: مرورگر گاهی نمی‌تواند
+ * مستقیم `f2medx.top` را بگیرد (پاسخ می‌آید ولی بدنهٔ تصویر نمی‌رسد) و پوسترها
+ * خالی می‌مانند. از سمت سرور سالم دانلود و روی دیسک کش می‌شود.
+ */
+export function viaImageProxy(url: string): string {
+  try {
+    const parsed = new URL(url)
+    if (parsed.hostname === 'f2medx.top' || parsed.hostname === 'www.f2medx.top') {
+      return `/api/f2m-image?url=${encodeURIComponent(url)}`
+    }
+  } catch {
+    /* آدرس خراب → همان را بفرست */
+  }
+  return url
+}
+
 export function getPosterURL(path: string | null, size: 'w200' | 'w300' | 'w500' | 'original' = 'w500'): string {
   if (!path) return '/placeholder-poster.svg'
-  if (path.startsWith('http')) return path
+  if (path.startsWith('http')) return viaImageProxy(path)
   if (path.startsWith('/api/')) return path
   return `/api/image?path=${encodeURIComponent(path)}&size=${size}`
 }
