@@ -29,10 +29,25 @@ export interface F2MListResult {
   hasMore: boolean
 }
 
+export interface F2MDownload {
+  /** گروه نسخه: «دوبله فارسی…»، «زیرنویس فارسی چسبیده…»، «زبان اصلی…» */
+  group: string
+  quality: string
+  url: string
+}
+
+export interface F2MSubtitleLink {
+  label: string
+  url: string
+}
+
 export interface F2MDetails {
   overview: string
   poster: string | null
   cast: { name: string; character: string; profile_path: string | null }[]
+  downloads: F2MDownload[]
+  subtitles: F2MSubtitleLink[]
+  trailer: string | null
 }
 
 const F2M_BASE = (process.env.F2M_BASE || 'https://f2medx.top').replace(/\/+$/, '')
@@ -443,6 +458,153 @@ export async function fetchDetails(url: string): Promise<F2MDetails> {
   return {
     overview: extractOverview(html),
     poster: posterMatch ? absoluteUrl(posterMatch[1]) : null,
-    cast: extractCast(html)
+    cast: extractCast(html),
+    downloads: extractDownloads(html),
+    subtitles: await extractSubtitles(html, url),
+    trailer: extractTrailerUrl(html)
   }
+}
+
+/* ------------------------------------------------------------------ *
+ * لینک‌های دانلود، زیرنویس و تریلر از صفحهٔ جزئیات سایت
+ * ------------------------------------------------------------------ */
+
+/** عنوان قابل‌استفاده برای جستجوی زیرنویس: بخش لاتینِ عنوان صفحه، یا اسلاگِ آدرس */
+function extractTitleFromHtml(html: string, url: string): string {
+  const og = html.match(/<meta[^>]+property="og:title"[^>]+content="([^"]*)"/)
+  if (og) {
+    const raw = decodeEntities(og[1])
+    const runs = (raw.match(/[A-Za-z0-9][A-Za-z0-9:.'’&\- ]{2,}/g) || [])
+      .map((s) => s.trim())
+      .filter((s) => s.length >= 3)
+    if (runs.length) return runs.sort((a, b) => b.length - a.length)[0]
+  }
+  return slugFromUrl(url).replace(/-/g, ' ')
+}
+
+/** آخرین قطعهٔ آدرس = اسلاگ فیلم (مثل wuthering-heights-2026) */
+function slugFromUrl(url: string): string {
+  try {
+    const parts = new URL(url).pathname.split('/').filter(Boolean)
+    return parts[parts.length - 1] || ''
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * باکس دانلود: هر بلاک `download-list` یک گروه نسخه است (دوبله فارسی،
+ * زیرنویس چسبیده، زبان اصلی…) و هر `<li>` یک کیفیت + لینک مستقیم دارد.
+ */
+function extractDownloads(html: string): F2MDownload[] {
+  const sectionMatch = html.match(/<section id="downloads"[\s\S]*?(?=<section |<footer|<\/main>)/)
+  const section = sectionMatch ? sectionMatch[0] : html
+  const out: F2MDownload[] = []
+  const seen = new Set<string>()
+
+  const blockPattern = /<div class="download-list[^"]*">([\s\S]*?)(?=<div class="download-list|<\/section>|$)/g
+  let block: RegExpExecArray | null
+  while ((block = blockPattern.exec(section))) {
+    const blockHtml = block[1]
+    const titleMatch = blockHtml.match(/<p class="title">\s*<span>([\s\S]*?)<\/span>/)
+    const group = titleMatch ? decodeEntities(titleMatch[1]) : ''
+
+    for (const li of blockHtml.split(/<li[^>]*>/).slice(1)) {
+      const qualityMatch = li.match(/<span class="text"[^>]*>([^<]+)<\/span>/)
+      const linkMatch =
+        li.match(/<a href="([^"]+)"[^>]*download[^>]*>\s*دانلود مستقیم/) ||
+        li.match(/<a href="([^"]+)"[^>]*\sdownload/)
+      if (!qualityMatch || !linkMatch) continue
+      const fileUrl = linkMatch[1].replace(/&amp;/g, '&')
+      const quality = decodeEntities(qualityMatch[1])
+      const key = `${quality}|${fileUrl}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      out.push({ group, quality, url: fileUrl })
+    }
+  }
+
+  return out
+}
+
+/** ویدیوی تریلر داخل مودال `trailerModal` سایت (فایل MP4 مستقیم) */
+function extractTrailerUrl(html: string): string | null {
+  const idx = html.indexOf('id="trailerModal"')
+  if (idx < 0) return null
+  const chunk = html.slice(idx, idx + 4000)
+  const video = chunk.match(/<video[^>]+src="([^"]+)"/)
+  if (video) return video[1].replace(/&amp;/g, '&')
+  const yt = chunk.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{6,})/)
+  if (yt) return `https://www.youtube.com/watch?v=${yt[1]}`
+  return null
+}
+
+const SUBZONE_BASE = 'https://subzone.ir'
+const SUBZONE_TTL = 24 * 60 * 60 * 1000
+
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9\u0600-\u06ff]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+/**
+ * زیرنویس: اول لینک‌های مستقیم داخل صفحهٔ فیلم؛ وگرنه صفحهٔ زیرنویسِ
+ * همان فیلم در Subzone را با اسلاگ (با و بدون سال) پیدا می‌کنیم و
+ * در آخر سراغ جستجو می‌رویم.
+ */
+async function extractSubtitles(html: string, url: string): Promise<F2MSubtitleLink[]> {
+  const links: F2MSubtitleLink[] = []
+  const seen = new Set<string>()
+
+  const directPattern = /<a[^>]+href="([^"]+)"[^>]*>\s*دانلود زیرنویس/g
+  let m: RegExpExecArray | null
+  while ((m = directPattern.exec(html))) {
+    const fileUrl = m[1].replace(/&amp;/g, '&')
+    if (!fileUrl || fileUrl === SUBZONE_BASE || fileUrl === `${SUBZONE_BASE}/`) continue
+    if (seen.has(fileUrl)) continue
+    seen.add(fileUrl)
+    links.push({ label: 'دانلود زیرنویس', url: fileUrl })
+  }
+  if (links.length > 0) return links
+
+  const title = extractTitleFromHtml(html, url)
+  const slug = slugFromUrl(url)
+  const candidates = Array.from(
+    new Set([slug, slug.replace(/-(?:19|20)\d{2}$/, '')].filter((s) => s && s.length >= 3))
+  )
+
+  // ۱) صفحهٔ مستقیم با اسلاگ (اگر ۴۰۴ بود استثنا می‌دهد و رد می‌شود)
+  for (const candidate of candidates) {
+    try {
+      await loadHtml(`${SUBZONE_BASE}/subtitles/${candidate}`, SUBZONE_TTL)
+      links.push({
+        label: title ? `زیرنویس «${title}» در Subzone` : 'زیرنویس در Subzone',
+        url: `${SUBZONE_BASE}/subtitles/${candidate}`
+      })
+      return links
+    } catch {
+      // اسلاگ بعدی
+    }
+  }
+
+  // ۲) جستجو بر اساس عنوان
+  const query = `${SUBZONE_BASE}/subtitles/searchbytitle?query=${encodeURIComponent(title || slug.replace(/-/g, ' '))}`
+  try {
+    const searchHtml = await loadHtml(query, SUBZONE_TTL)
+    const slugs = Array.from(searchHtml.matchAll(/href="(\/subtitles\/[^"?#]+)"/g)).map((x) => x[1])
+    if (slugs.length) {
+      const want = slugify(title) || candidates[0] || ''
+      const exact = slugs.find((s) => s === `/subtitles/${want}`)
+      const partial = want ? slugs.find((s) => s.includes(want) || want.includes(s.replace('/subtitles/', ''))) : undefined
+      links.push({ label: `زیرنویس «${title}» در Subzone`, url: `${SUBZONE_BASE}${exact || partial || slugs[0]}` })
+      return links
+    }
+  } catch {
+    // اینترنت در دسترس نیست → لینک جستجو را برمی‌گردانیم
+  }
+
+  links.push({ label: `جستجوی زیرنویس «${title}»`, url: query })
+  return links
 }
