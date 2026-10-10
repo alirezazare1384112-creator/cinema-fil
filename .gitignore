@@ -47,3 +47,12 @@ next-env.d.ts
 
 # کش پوسترها (بهینه‌سازی سرعت)
 .tmdb-image-cache/
+
+# کش صفحات سایت فیلم (بهینه‌سازی سرعت)
+.f2m-cache/
+
+# لاگ‌ها و اسکریپت‌های موقت دیباگ
+*.log
+_*.mjs
+pot*out.txt
+playout.txt

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { Search, X, Loader2, Film, Tv, Clock, Trash2, Library } from 'lucide-react'
 import { getPosterURL } from '@/lib/tmdb'
+import { prefetchDetails } from '@/lib/details-cache'
 import type { Media, TMDBMovie, TMDBTVShow } from '@/types'
 
 interface SearchBarProps {
@@ -75,6 +76,13 @@ export default function SearchBar({ onSelect, onSelectLocalMedia, placeholder = 
   useEffect(() => {
     setActiveIndex(-1)
   }, [combinedEntries.length, query])
+
+  // پیش‌واکشی جزئیاتِ آیتمی که کاربر رویش hover کرده یا با کلید جهت‌نما
+  // به آن رسیده → لحظهٔ کلیک دیگر منتظر درخواست نمی‌ماند.
+  useEffect(() => {
+    const entry = combinedEntries[activeIndex]
+    if (entry?.kind === 'tmdb') prefetchDetails(entry.item)
+  }, [activeIndex, combinedEntries])
 
   const saveToHistory = (term: string) => {
     if (!term.trim()) return

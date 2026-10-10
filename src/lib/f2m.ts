@@ -1,3 +1,7 @@
+import { promises as fs } from 'node:fs'
+import { createHash } from 'node:crypto'
+import path from 'node:path'
+
 export type F2MType = 'movie' | 'tv' | 'all'
 export type F2MSort = 'newest' | 'modified' | 'popular' | 'imdb_rate' | 'release'
 
@@ -161,6 +165,34 @@ async function requestHtml(url: string): Promise<string> {
   throw lastError instanceof Error ? lastError : new Error('ارتباط با سایت فیلم ناموفق بود')
 }
 
+// کش صفحات روی دیسک → بعد از ری‌استارت سرور یا هات‌ریلود در حالت dev هم
+// سریع می‌ماند و درخواست دوباره به سایت نمی‌رود.
+const HTML_CACHE_DIR = path.join(process.cwd(), '.f2m-cache')
+
+function htmlCachePath(url: string): string {
+  return path.join(HTML_CACHE_DIR, `${createHash('sha256').update(url).digest('hex').slice(0, 32)}.json`)
+}
+
+async function readHtmlFromDisk(url: string): Promise<string | null> {
+  try {
+    const raw = await fs.readFile(htmlCachePath(url), 'utf8')
+    const parsed = JSON.parse(raw) as { exp: number; html: string }
+    if (parsed && parsed.exp > Date.now() && typeof parsed.html === 'string') return parsed.html
+  } catch {
+    // فایل نیست یا خراب است → از سایت می‌گیریم
+  }
+  return null
+}
+
+async function writeHtmlToDisk(url: string, exp: number, html: string): Promise<void> {
+  try {
+    await fs.mkdir(HTML_CACHE_DIR, { recursive: true })
+    await fs.writeFile(htmlCachePath(url), JSON.stringify({ exp, html }), 'utf8')
+  } catch {
+    // دیسک در دسترس نیست → فقط کش حافظه می‌ماند
+  }
+}
+
 async function loadHtml(url: string, ttl: number): Promise<string> {
   const cached = htmlCache.get(url)
   if (cached && cached.exp > Date.now()) return cached.html
@@ -169,9 +201,18 @@ async function loadHtml(url: string, ttl: number): Promise<string> {
   if (running) return running
 
   const task = (async () => {
+    const fromDisk = await readHtmlFromDisk(url)
+    if (fromDisk) {
+      htmlCache.set(url, { exp: Date.now() + ttl, html: fromDisk })
+      trimCache()
+      return fromDisk
+    }
+
     const html = await requestHtml(url)
-    htmlCache.set(url, { exp: Date.now() + ttl, html })
+    const exp = Date.now() + ttl
+    htmlCache.set(url, { exp, html })
     trimCache()
+    void writeHtmlToDisk(url, exp, html)
     return html
   })()
 
@@ -452,7 +493,12 @@ export async function fetchDetails(url: string): Promise<F2MDetails> {
     throw new Error('آدرس نامعتبر است')
   }
 
-  const html = await loadHtml(url, DETAILS_TTL)
+  // صفحهٔ فیلم و زیرنویس (Subzone) هم‌زمان گرفته می‌شوند → زمان پاسخ برابر
+  // بزرگ‌ترین درخواست است نه جمعشان (حدود ۵۰۰ تا ۷۰۰ میلی‌ثانیه کمتر).
+  const [html, subzoneLink] = await Promise.all([
+    loadHtml(url, DETAILS_TTL),
+    resolveSubzoneLink(url).catch(() => null)
+  ])
   const posterMatch = html.match(/<meta[^>]+property="og:image"[^>]+content="([^"]*)"/)
 
   return {
@@ -460,7 +506,7 @@ export async function fetchDetails(url: string): Promise<F2MDetails> {
     poster: posterMatch ? absoluteUrl(posterMatch[1]) : null,
     cast: extractCast(html),
     downloads: extractDownloads(html),
-    subtitles: await extractSubtitles(html, url),
+    subtitles: await extractSubtitles(html, url, subzoneLink),
     trailer: extractTrailerUrl(html)
   }
 }
@@ -550,11 +596,32 @@ function slugify(value: string): string {
 }
 
 /**
+ * صفحهٔ زیرنویسِ همان فیلم در Subzone را با اسلاگِ آدرس (با/بدون سال) پیدا
+ * می‌کند. به HTML صفحهٔ فیلم وابسته نیست، پس هم‌زمان با دانلود آن صفحه
+ * اجرا می‌شود و به زمان پاسخ چیزی اضافه نمی‌کند.
+ */
+async function resolveSubzoneLink(url: string): Promise<string | null> {
+  const slug = slugFromUrl(url)
+  const candidates = Array.from(
+    new Set([slug, slug.replace(/-(?:19|20)\d{2}$/, '')].filter((s) => s && s.length >= 3))
+  )
+  for (const candidate of candidates) {
+    try {
+      await loadHtml(`${SUBZONE_BASE}/subtitles/${candidate}`, SUBZONE_TTL)
+      return `${SUBZONE_BASE}/subtitles/${candidate}`
+    } catch {
+      // اسلاگ بعدی (۴۰۴ یعنی این اسلاگ وجود ندارد)
+    }
+  }
+  return null
+}
+
+/**
  * زیرنویس: اول لینک‌های مستقیم داخل صفحهٔ فیلم؛ وگرنه صفحهٔ زیرنویسِ
  * همان فیلم در Subzone را با اسلاگ (با و بدون سال) پیدا می‌کنیم و
  * در آخر سراغ جستجو می‌رویم.
  */
-async function extractSubtitles(html: string, url: string): Promise<F2MSubtitleLink[]> {
+async function extractSubtitles(html: string, url: string, subzoneLink: string | null): Promise<F2MSubtitleLink[]> {
   const links: F2MSubtitleLink[] = []
   const seen = new Set<string>()
 
@@ -575,18 +642,13 @@ async function extractSubtitles(html: string, url: string): Promise<F2MSubtitleL
     new Set([slug, slug.replace(/-(?:19|20)\d{2}$/, '')].filter((s) => s && s.length >= 3))
   )
 
-  // ۱) صفحهٔ مستقیم با اسلاگ (اگر ۴۰۴ بود استثنا می‌دهد و رد می‌شود)
-  for (const candidate of candidates) {
-    try {
-      await loadHtml(`${SUBZONE_BASE}/subtitles/${candidate}`, SUBZONE_TTL)
-      links.push({
-        label: title ? `زیرنویس «${title}» در Subzone` : 'زیرنویس در Subzone',
-        url: `${SUBZONE_BASE}/subtitles/${candidate}`
-      })
-      return links
-    } catch {
-      // اسلاگ بعدی
-    }
+  // ۱) نتیجهٔ پیش‌واکشی‌شدهٔ هم‌زمان (resolveSubzoneLink)
+  if (subzoneLink) {
+    links.push({
+      label: title ? `زیرنویس «${title}» در Subzone` : 'زیرنویس در Subzone',
+      url: subzoneLink
+    })
+    return links
   }
 
   // ۲) جستجو بر اساس عنوان

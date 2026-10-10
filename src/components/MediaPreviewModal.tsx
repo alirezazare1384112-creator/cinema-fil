@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { X, Star, Play, Plus, Check, Clapperboard, Download, Subtitles, Copy } from 'lucide-react'
-import { getBackdropURL, getPosterURL, genreLabels, getStoredApiKey } from '@/lib/tmdb'
+import { getBackdropURL, getPosterURL, genreLabels } from '@/lib/tmdb'
+import { getDetails } from '@/lib/details-cache'
 import type { TMDBMovie, TMDBTVShow, Media } from '@/types'
 
 interface MediaPreviewModalProps {
@@ -66,47 +67,20 @@ export default function MediaPreviewModal({ item, isOpen, onClose, onAdded }: Me
     setDetails(null)
     setLoadingDetails(true)
 
-    if (item.source === 'f2m') {
-      if (!item.detail_url) {
-        setLoadingDetails(false)
-        return
-      }
-      fetch(`/api/f2m?action=details&url=${encodeURIComponent(item.detail_url)}`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((data) => {
-          if (!data) return
-          setDetails({
-            cast: Array.isArray(data.cast) ? data.cast : [],
-            overview: data.overview || '',
-            downloads: Array.isArray(data.downloads) ? data.downloads : [],
-            subtitles: Array.isArray(data.subtitles) ? data.subtitles : [],
-            trailer: data.trailer || null
-          })
-        })
-        .catch(() => setDetails(null))
-        .finally(() => setLoadingDetails(false))
-      return
-    }
-
-    const id = item.id
-    const type = item.media_type || ('title' in item ? 'movie' : 'tv')
-    const key = getStoredApiKey()
-    fetch(`/api/tmdb?action=details&id=${id}&type=${type}${key ? `&apiKey=${encodeURIComponent(key)}` : ''}`)
-      .then((r) => (r.ok ? r.json() : null))
+    // از کش مشترک استفاده می‌کند؛ اگر hover/کلید جهت‌نما از قبل پیش‌واکشی
+    // کرده باشد، همین‌جا بلافاصله resolve می‌شود.
+    let cancelled = false
+    getDetails(item)
       .then((data) => {
-        if (!data) return
-        const cast = (data.credits?.cast || []).slice(0, 8).map((c: { name: string; character: string; profile_path: string | null }) => ({
-          name: c.name,
-          character: c.character,
-          profile_path: c.profile_path
-        }))
-        const trailer = (data.videos?.results || []).find(
-          (v: { site: string; type: string; key: string }) => v.site === 'YouTube' && v.type === 'Trailer'
-        )
-        setDetails({ cast, trailerKey: trailer?.key })
+        if (!cancelled) setDetails(data)
       })
-      .catch(() => setDetails(null))
-      .finally(() => setLoadingDetails(false))
+      .finally(() => {
+        if (!cancelled) setLoadingDetails(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [isOpen, item])
 
   if (!isOpen || !item) return null

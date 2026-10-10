@@ -5,6 +5,7 @@ import { Sparkles, TrendingUp, Film, Tv, ArrowUpDown, CalendarDays, Star, Layers
 import SearchBar from '@/components/SearchBar'
 import MediaPreviewModal from '@/components/MediaPreviewModal'
 import { getPosterURL, genreLabels } from '@/lib/tmdb'
+import { prefetchDetails } from '@/lib/details-cache'
 import type { Media, TMDBMovie, TMDBTVShow } from '@/types'
 
 interface GenreOption {
@@ -306,6 +307,7 @@ export default function DiscoverPage() {
                 <div
                   key={`${type}-${item.id}-${index}`}
                   className="glass-card overflow-hidden group hover:scale-[1.02] transition-all duration-300 cursor-pointer"
+                  onMouseEnter={() => prefetchDetails(item)}
                   onClick={() => {
                     setPreviewItem(item)
                     setIsPreviewOpen(true)
