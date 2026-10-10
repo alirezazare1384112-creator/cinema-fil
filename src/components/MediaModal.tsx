@@ -209,14 +209,14 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
   // (یک بار؛ بعد از آن stateها مانع تکرار می‌شوند و دکمه برای تلاش دوباره هست)
   useEffect(() => {
     if (!isOpen || !media) return
-    if (activeTab !== 'files' || localLoading || localFiles.length > 0) return
+    if (localLoading || localFiles.length > 0) return
     if (links || linksLoading || linksError) return
     const timer = setTimeout(() => {
       void loadLinks()
     }, 0)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, media, activeTab, localLoading, localFiles.length, links, linksLoading, linksError])
+  }, [isOpen, media, localLoading, localFiles.length, links, linksLoading, linksError])
 
   if (!isOpen || !media) return null
 
@@ -519,6 +519,29 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
                 <Save className="w-4 h-4" />
                 ذخیره تغییرات
               </button>
+
+              {/* بدون فایل محلی؟ لینک‌های دانلود سایت همین‌جا (تب جزئیات) */}
+              {localFiles.length === 0 && !localLoading && (
+                <div className="mt-8 pt-6 border-t border-white/10">
+                  {linksLoading && (
+                    <p className="text-xs text-gray-500 flex items-center gap-2">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      در حال دریافت لینک‌های دانلود از سایت فیلم…
+                    </p>
+                  )}
+                  {linksError && (
+                    <p className="text-xs text-red-400">
+                      {linksError} — <button onClick={loadLinks} className="underline">تلاش دوباره</button>
+                    </p>
+                  )}
+                  <DownloadLinks
+                    downloads={links?.downloads}
+                    subtitles={links?.subtitles}
+                    trailer={links?.trailer}
+                    title={media.title}
+                  />
+                </div>
+              )}
             </div>
           )}
 
