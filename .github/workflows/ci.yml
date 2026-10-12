@@ -1,0 +1,36 @@
+name: CI
+
+# هر بار push یا pull request، پروژه روی یک محیط تمیز بیلد می‌شود تا مطمئن
+# شویم روی گیت‌هاب/سرور دیپلوی هم بدون خطا بالا می‌آید.
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: دریافت کد
+        uses: actions/checkout@v4
+
+      - name: نصب Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: نصب وابستگی‌ها
+        run: npm ci
+
+      # prisma generate در postinstall هم اجرا می‌شود؛ اینجا دوباره برای مطمئنی
+      - name: ساخت کلاینت Prisma
+        run: npx prisma generate
+
+      - name: ساخت دیتابیس SQLite (برای محیط تمیز)
+        run: npx prisma db push --skip-generate
+
+      - name: بیلد
+        run: npm run build
+        env:
+          NEXT_PUBLIC_TMDB_API_KEY: ${{ secrets.NEXT_PUBLIC_TMDB_API_KEY }}

@@ -53,6 +53,7 @@ model LocalFile {
   subtitle      String?
   category      String?   // 'movie' | 'series'
   lastPlayed    DateTime?
+  createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
   media         Media?    @relation(fields: [mediaId], references: [id], onDelete: Cascade)
