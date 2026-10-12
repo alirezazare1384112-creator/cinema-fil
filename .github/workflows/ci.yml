@@ -28,7 +28,7 @@ jobs:
         run: npx prisma generate
 
       - name: ساخت دیتابیس SQLite (برای محیط تمیز)
-        run: npx prisma db push --skip-generate
+        run: npx prisma db push
 
       - name: بیلد
         run: npm run build

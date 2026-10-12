@@ -43,7 +43,7 @@ if not exist ".env" (
 )
 
 echo  [3/4] ساخت ديتابيس محلي...
-call npx prisma db push --skip-generate
+call npx prisma db push
 if errorlevel 1 (
     echo  [خطا] ساخت ديتابيس ناموفق بود.
     pause
