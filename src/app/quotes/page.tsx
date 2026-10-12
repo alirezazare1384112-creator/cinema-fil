@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { Quote, Plus, Film, Trash2, Dice5, Upload, LinkIcon, X, Loader2, Copy, Check } from 'lucide-react'
 import QuoteCard from '@/components/QuoteCard'
 import { getBackdropURL } from '@/lib/tmdb'
+import { sharedJson } from '@/lib/api-cache'
 import { uploadFile } from '@/lib/uploadFile'
 import type { Quote as QuoteData, Media } from '@/types'
 
@@ -46,8 +47,7 @@ export default function QuotesPage() {
 
   const fetchMedia = useCallback(async () => {
     try {
-      const response = await fetch('/api/media')
-      const data = await response.json()
+      const data = (await sharedJson<Media[]>('/api/media')) || []
       setMedia(data)
     } catch (error) {
       console.error('Error fetching media:', error)

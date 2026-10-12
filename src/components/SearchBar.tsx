@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { Search, X, Loader2, Film, Tv, Clock, Trash2, Library } from 'lucide-react'
 import { getPosterURL } from '@/lib/tmdb'
 import { prefetchDetails } from '@/lib/details-cache'
+import { sharedJson } from '@/lib/api-cache'
 import type { Media, TMDBMovie, TMDBTVShow } from '@/types'
 
 interface SearchBarProps {
@@ -30,10 +31,9 @@ export default function SearchBar({ onSelect, onSelectLocalMedia, placeholder = 
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
-    fetch('/api/media')
-      .then((r) => r.json())
-      .then((data) => setLibraryMedia(Array.isArray(data) ? data : []))
-      .catch(() => {})
+    sharedJson<Media[]>('/api/media').then((data) => {
+      setLibraryMedia(Array.isArray(data) ? data : [])
+    })
   }, [])
 
   useEffect(() => {

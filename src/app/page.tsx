@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { TrendingUp, Clock, Eye, Play, Film, Tv, Sparkles } from 'lucide-react'
 import { getPosterURL, getStoredApiKey } from '@/lib/tmdb'
+import { sharedJson } from '@/lib/api-cache'
 import type { Media } from '@/types'
 import type { TMDBMovie, TMDBTVShow } from '@/types'
 
@@ -23,8 +24,7 @@ export default function HomePage() {
 
   const fetchMedia = async () => {
     try {
-      const response = await fetch('/api/media')
-      const data = await response.json()
+      const data = (await sharedJson<Media[]>('/api/media')) || []
       setRecentMedia(data.slice(0, 6))
 
       const watched = data.filter((m: Media) => m.watchStatus === 'watched').length

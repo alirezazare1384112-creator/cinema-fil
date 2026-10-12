@@ -6,6 +6,7 @@ import SearchBar from '@/components/SearchBar'
 import MediaPreviewModal from '@/components/MediaPreviewModal'
 import { getPosterURL, genreLabels } from '@/lib/tmdb'
 import { prefetchDetails } from '@/lib/details-cache'
+import { sharedJson } from '@/lib/api-cache'
 import type { Media, TMDBMovie, TMDBTVShow } from '@/types'
 
 interface GenreOption {
@@ -97,8 +98,7 @@ export default function DiscoverPage() {
 
   const fetchSavedMedia = async () => {
     try {
-      const response = await fetch('/api/media')
-      const data = await response.json()
+      const data = await sharedJson<Media[]>('/api/media')
       setSavedMedia(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error('Error fetching saved media:', error)

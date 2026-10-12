@@ -482,6 +482,19 @@ export async function fetchGenres(): Promise<F2MGenre[]> {
   return [...movieGenres, ...tvGenres]
 }
 
+/**
+ * کش‌ها را از لحظهٔ شروع سرور گرم می‌کند تا اولین کلیک کاربر روی «کشف»
+ * معطل دانلود صفحه از سایت فیلم نماند. (سرد: ۱ تا ۲ ثانیه — گرم: چند میلی‌ثانیه)
+ * خطاها بی‌صدا نادیده گرفته می‌شوند؛ در بدترین حالت همان حالت سرد اجرا می‌شود.
+ */
+export async function warmCaches(): Promise<void> {
+  await Promise.allSettled([
+    fetchGenres().catch(() => null),
+    fetchList({ type: 'movie', sortby: 'popular', page: 1 }).catch(() => null),
+    fetchList({ type: 'tv', sortby: 'popular', page: 1 }).catch(() => null)
+  ])
+}
+
 function isSameHost(url: string): boolean {
   try {
     const target = new URL(url)
