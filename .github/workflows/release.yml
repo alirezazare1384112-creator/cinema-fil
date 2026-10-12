@@ -1,0 +1,64 @@
+name: Release
+
+# با هر تگ مثل v1.0.0 یک نسخهٔ قابل دانلود روی GitHub Releases ساخته می‌شود:
+# یک فایل ZIP که کاربر دانلود می‌کند، از حافظه درمی‌آورد و setup.bat را اجرا می‌کند.
+# داخل ZIP هیچ دیتابیس، آپلود یا دادهٔ شخصی نیست (همه در .gitignore هستند).
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: دریافت کد
+        uses: actions/checkout@v4
+
+      - name: نصب Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: نصب وابستگی‌ها
+        run: npm ci
+
+      - name: ساخت کلاینت Prisma
+        run: npx prisma generate
+
+      - name: بیلد
+        run: npm run build
+        env:
+          NEXT_PUBLIC_TMDB_API_KEY: ${{ secrets.NEXT_PUBLIC_TMDB_API_KEY }}
+
+      - name: ساخت بستهٔ نصب (ZIP)
+        run: |
+          STAGE=cinephile-vault
+          mkdir -p "$STAGE"
+          # کد + اسکریپت‌های نصب/اجرا (بدون دیتابیس، آپلود و کش‌ها)
+          cp -r src prisma public "$STAGE"/
+          cp package.json package-lock.json tsconfig.json next.config.ts \
+             postcss.config.mjs eslint.config.mjs prisma.config.ts \
+             README.md setup.bat start-cinephile.bat .env.example .gitignore "$STAGE"/
+          # بیلد تولید تا کاربر منتظر build نماند
+          cp -r .next "$STAGE"/.next
+          # پوشه خالی برای آپلودهای خود کاربر
+          mkdir -p "$STAGE"/uploads
+          zip -r cinephile-vault-${{ github.ref_name }}.zip "$STAGE" -x "*.map" "*.prisma/dev.db*"
+          ls -lh cinephile-vault-*.zip
+
+      - name: انتشار روی GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          files: cinephile-vault-*.zip
+          generate_release_notes: true
+          body: |
+            ### نصب
+            1. فایل ZIP را دانلود و از حافظه دربیاورید
+            2. `setup.bat` را اجرا کنید (نصب، دیتابیس خالی، سپس اجرای برنامه)
+            3. فیلم‌ها و پوشه‌های ادیت خودتان را از داخل برنامه وصل کنید
+
+            برنامه کاملاً محلی است؛ هیچ فیلم یا داده‌ای همراه بسته نیست.
