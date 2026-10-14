@@ -134,6 +134,17 @@ select option {
   position: relative;
 }
 
+/* Tailwind position utilities live in a cascade layer, so the unlayered
+   .glass-card rule above would beat them (dropdowns rendered as relative
+   and drifted down by top:100%). Restore the intended positioning. */
+.glass-card.absolute {
+  position: absolute;
+}
+
+.glass-card.fixed {
+  position: fixed;
+}
+
 .glass-card:hover {
   background: rgba(255, 255, 255, 0.08);
   border-color: var(--glass-hover-border);
