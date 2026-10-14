@@ -1,0 +1,4 @@
+# Batch files must keep exact CRLF bytes: cmd.exe misparses UTF-8 (Persian)
+# text on bare-LF lines, and GitHub ZIP archives would otherwise ship LF.
+*.bat -text
+*.cmd -text

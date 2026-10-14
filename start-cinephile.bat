@@ -13,7 +13,7 @@ if errorlevel 1 (
 )
 
 if not exist node_modules (
-    echo  در حال نصب کتابخانه‌ها (یک تا چند دقیقه)...
+    echo  در حال نصب کتابخانه‌ها - ممکن است یک تا چند دقیقه طول بکشد...
     call npm install
     if errorlevel 1 (
         echo  [خطا] نصب کتابخانه‌ها ناموفق بود. اینترنت را چک کن و دوباره اجرا کن.
