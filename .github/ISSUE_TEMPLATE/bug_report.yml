@@ -1,0 +1,111 @@
+name: 🐛 Bug Report
+description: Report something that's broken or behaves unexpectedly
+title: "bug: <short description>"
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ممنون که وقت گذاشتی! قبل از submit، لطفاً جستجو کن که این باگ قبلاً گزارش نشده باشه.
+
+        Thanks for taking the time to report a bug! Before submitting, please search existing issues to avoid duplicates.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: چه اتفاقی افتاد؟ / What happened?
+      description: توضیح بده چی انتظار داشتی و چی شد.
+      placeholder: "وقتی روی X کلیک کردم، انتظار داشتم Y بشه ولی Z شد..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: مراحل بازتولید / Steps to reproduce
+      description: دقیق باش تا بتونیم تکرار کنیم.
+      placeholder: |
+        1. رفتم به صفحهٔ...
+        2. روی دکمهٔ... کلیک کردم
+        3. ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: theme
+    attributes:
+      label: تم فعال / Active theme
+      options:
+        - default (بنفش سینمایی)
+        - batman (شوالیهٔ تاریکی)
+        - joker (جوکر)
+        - spiderman (مرد عنکبوتی)
+        - matrix (ماتریکس)
+        - breakingbad (برکینگ بد)
+        - harrypotter (هری پاتر)
+        - starwars (جنگ ستارگان)
+        - got (بازی تاج و تخت)
+        - نمی‌دانم / Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: page
+    attributes:
+      label: صفحه / Page
+      placeholder: "/discover, /library, /settings, ..."
+    validations:
+      required: false
+
+  - type: input
+    id: browser
+    attributes:
+      label: مرورگر / Browser
+      placeholder: "Chrome 130, Firefox 131, Edge 130, ..."
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: سیستم‌عامل / OS
+      placeholder: "Windows 11, macOS 14, Ubuntu 24.04, ..."
+    validations:
+      required: true
+
+  - type: input
+    id: node-version
+    attributes:
+      label: نسخهٔ Node.js / Node.js version
+      placeholder: "20.x, 22.x"
+      description: "اگه فقط کاربر هستی و نصب کردی، بنویس «کاربر»."
+    validations:
+      required: false
+
+  - type: dropdown
+    id: fresh-db
+    attributes:
+      label: آیا با دیتابیس تازه هم اتفاق می‌افته؟ / Does it happen with a fresh dev.db?
+      options:
+        - "بله / Yes"
+        - "نه / No"
+        - "تست نکردم / Haven't tested"
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: لاگ‌ها / Console output
+      description: خطاهای کنسول مرورگر یا ترمینال سرور رو اینجا بچسبون.
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: اسکرین‌شات / Screenshots
+      description: اگه میشه، عکس بذار.
+    validations:
+      required: false

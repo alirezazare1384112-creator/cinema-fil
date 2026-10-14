@@ -1,0 +1,25 @@
+name: 🐛 Auto-label Issue
+
+# وقتی یه issue جدید باز میشه، بر اساس template یا کلماتِ کلیدی داخلش،
+# label خودکار اضافه میشه (bug / enhancement / question / triage).
+# این به نگهدارنده کمک می‌کنه سریع‌تر issue رو اولویت‌بندی کنه.
+
+on:
+  issues:
+    types: [opened, edited, reopened]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply labels based on title and body
+        uses: github/issue-labeler@v3.4
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/issue-labeler.yml
+          enable-versioned-regex: 0
+          sync-labels: 1

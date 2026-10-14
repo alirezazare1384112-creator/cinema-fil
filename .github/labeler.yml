@@ -1,0 +1,73 @@
+# Auto-labeler config — determines which labels to apply based on file paths
+# in a pull request. Uses actions/labeler@v5.
+#
+# See: https://github.com/actions/labeler
+
+# Themes & visual
+theme:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'src/lib/themes.tsx'
+      - 'src/components/ThemePreview.tsx'
+      - 'src/app/globals.css'
+
+ui:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'src/components/**'
+      - 'src/app/**/page.tsx'
+      - 'src/app/globals.css'
+
+# Backend / API
+api:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'src/app/api/**'
+      - 'src/lib/**'
+
+# Database / schema
+database:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'prisma/**'
+      - 'prisma.config.ts'
+
+# Documentation
+documentation:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '*.md'
+      - 'README.md'
+      - 'CONTRIBUTING.md'
+      - 'CODE_OF_CONDUCT.md'
+      - '.github/**/*.md'
+
+# CI / workflows
+ci:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '.github/workflows/**'
+
+# Dependencies
+dependencies:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'package.json'
+      - 'package-lock.json'
+
+# Setup / install scripts
+install:
+  - changed-files:
+    - any-glob-to-any-file:
+      - 'setup.bat'
+      - 'start-cinephile.bat'
+      - '.env.example'
+
+# Tests
+tests:
+  - changed-files:
+    - any-glob-to-any-file:
+      - '**/*.test.ts'
+      - '**/*.test.tsx'
+      - '**/*.spec.ts'
+      - '**/*.spec.tsx'

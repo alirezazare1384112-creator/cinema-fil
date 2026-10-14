@@ -1,0 +1,20 @@
+# Issue auto-labeler — matches issue title or body against regexes.
+# Used by .github/workflows/issue-labeler.yml
+#
+# Format: <label>: <regex pattern>
+# The label must already exist in the repo (or be created manually once).
+
+bug:
+  - '(?i)(bug|error|crash|broken|fail|wrong|issue|مشکل|باگ|خطا|خراب)'
+enhancement:
+  - '(?i)(feature|enhancement|suggestion|improve|add|new|ایده|افزودن|بهبود|فیچر)'
+question:
+  - '(?i)(how|question|help|چطور|چجوری|سوال|کمک)'
+theme:
+  - '(?i)(theme|spider|batman|joker|matrix|breaking|potter|star wars|got|تم|مرد عنکبوتی|بتمن|جوکر|ماتریکس)'
+ui:
+  - '(?i)(ui|interface|design|layout|css|style|رابط|طراحی|استایل)'
+docs:
+  - '(?i)(docs|readme|documentation|مستندات|راهنما)'
+performance:
+  - '(?i)(slow|performance|optimi[sz]e|fast|سرعت|کند|بهینه)'

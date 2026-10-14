@@ -1,0 +1,91 @@
+name: ✨ Feature Request
+description: Suggest a new feature or improvement
+title: "feat: <short description>"
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ممنون که ایده دادتی! قبل از submit، لطفاً جستجو کن که قبلاً پیشنهاد نشده باشه.
+
+        Thanks for suggesting a feature! Please search existing issues first to avoid duplicates.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: چه مشکلی داری؟ / What problem are you trying to solve?
+      description: |
+        بگو کجا/کی مشکلی داری، نه اینکه چطوری حلش کنی.
+        Describe the pain point — not the solution yet.
+      placeholder: "وقتی X می‌خوام، نمی‌تونم Y رو انجام بدم چون..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: راه‌حل پیشنهادی / Proposed solution
+      description: |
+        اگه ایده‌ای داری، بگو چطوری فکر می‌کنی باید کار کنه.
+      placeholder: "می‌تونم یه دکمه اضافه کنم که..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: راه‌های جایگزین / Alternatives considered
+      description: |
+        چه راه‌های دیگه‌ای به ذهنت رسیده؟ چرا این بهترین نیست؟
+    validations:
+      required: false
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: دامنهٔ تغییر / Scope
+      options:
+        - UI / صفحات
+        - Themes / تم‌ها
+        - API / endpoint جدید
+        - Data model / schema
+        - Performance / بهبود سرعت
+        - Privacy / حریم خصوصی
+        - Other / چیز دیگر
+    validations:
+      required: true
+
+  - type: dropdown
+    id: theme-specific
+    attributes:
+      label: آیا مخصوص یه تم خاصه؟ / Theme-specific?
+      options:
+        - "نه، همهٔ تم‌ها / No, all themes"
+        - "default"
+        - "batman"
+        - "joker"
+        - "spiderman"
+        - "matrix"
+        - "breakingbad"
+        - "harrypotter"
+        - "starwars"
+        - "got"
+    validations:
+      required: true
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: ماکت یا اسکرین‌شات / Mockups or screenshots
+      description: اگه طرح یا ماکت داری بذار.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: will-contribute
+    attributes:
+      label: آیا خودت PR می‌فرستی؟ / Will you open a PR?
+      options:
+        - label: بله، خودم کار می‌کنم / Yes, I'll work on this
+        - label: شاید، اگر راهنمایی بشه / Maybe, if I get help
+        - label: نه، فعلاً فقط ایده دادم / No, just an idea for now

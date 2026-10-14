@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 سوال عمومی / General question
+    url: https://github.com/alirezazare1384112-creator/cinema-fil/discussions
+    about: برای سوال‌های عمومی دربارهٔ استفاده از برنامه از Discussions استفاده کن.
+  - name: 🔒 گزارش مشکل امنیتی / Security report
+    url: https://github.com/alirezazare1384112-creator/cinema-fil/security/policy
+    about: برای گزارشِ آسیب‌پذیری امنیتی، لطفاً issue عمومی باز نکن — به security policy مراجعه کن.
