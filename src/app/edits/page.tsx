@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, type ChangeEvent } from 'react'
-import { Scissors, Plus, Tag, Play, Trash2, Edit, Film, Upload, Loader2, Check, ArrowRight, Folder, FolderOpen, ImagePlus, Link as LinkIcon } from 'lucide-react'
+import { Scissors, Plus, Tag, Play, Trash2, Edit, Film, Upload, Loader2, Check, ArrowRight, Folder, FolderOpen, ImagePlus, Link as LinkIcon, X, ExternalLink, Pin, Camera, Clapperboard } from 'lucide-react'
 import type { MediaEdit, EditFolder } from '@/types'
 import { useToast } from '@/components/Toast'
 import { extractPoster } from '@/lib/videoPoster'
@@ -19,6 +19,32 @@ function linkPlatform(url: string): string | null {
   } catch {
     return null
   }
+}
+
+/** اطلاعات پخش داخلی برای لینک‌های پینترست/اینستاگرام/ویدیوی مستقیم */
+interface InlinePlayer {
+  title: string
+  platform: 'Pinterest' | 'Instagram' | 'Video' | null
+  embedUrl: string | null
+  videoUrl: string | null
+  originalUrl: string
+}
+
+/** آیکون و رنگ بج هر پلتفرم */
+function PlatformBadge({ platform, compact }: { platform: string; compact?: boolean }) {
+  const style =
+    platform === 'Pinterest'
+      ? 'bg-gradient-to-l from-rose-600 to-pink-500'
+      : platform === 'Instagram'
+        ? 'bg-gradient-to-l from-purple-600 via-pink-500 to-orange-400'
+        : 'bg-white/15'
+  const Icon = platform === 'Pinterest' ? Pin : platform === 'Instagram' ? Camera : Clapperboard
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-white text-[11px] backdrop-blur-sm ${style}`}>
+      <Icon className={compact ? 'w-3 h-3' : 'w-3.5 h-3.5'} />
+      {platform}
+    </span>
+  )
 }
 
 export default function EditsPage() {
@@ -40,6 +66,44 @@ export default function EditsPage() {
     tags: [] as string[],
     audioInfo: ''
   })
+  /** مودال پخش داخلی (پینترست/اینستاگرام/ویدیوی مستقیم) */
+  const [player, setPlayer] = useState<InlinePlayer | null>(null)
+  /** پیش‌نمایش زندهٔ لینک در فرم افزودن */
+  const [linkPreview, setLinkPreview] = useState<{ platform: string; embedUrl: string | null; videoUrl: string | null } | null>(null)
+
+  // بستن مودال با Esc و قفل اسکرول صفحه هنگام باز بودن
+  useEffect(() => {
+    if (!player) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPlayer(null)
+    }
+    window.addEventListener('keydown', onKey)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.body.style.overflow = ''
+    }
+  }, [player])
+
+  // پیش‌نمایش زنده: لینک پینترست/اینستاگرام را در فرم تشخیص بده و همان‌جا نشان بده
+  useEffect(() => {
+    const url = newEdit.videoUrl.startsWith('/api/uploads/') ? '' : newEdit.videoUrl.trim()
+    const isHttp = /^https?:\/\//i.test(url)
+    const timer = setTimeout(async () => {
+      if (!isHttp) {
+        setLinkPreview(null)
+        return
+      }
+      try {
+        const res = await fetch(`/api/link-preview?url=${encodeURIComponent(url)}`)
+        const data = await res.json()
+        setLinkPreview(data.embedUrl || data.videoUrl ? data : null)
+      } catch {
+        setLinkPreview(null)
+      }
+    }, isHttp ? 700 : 50)
+    return () => clearTimeout(timer)
+  }, [newEdit.videoUrl])
 
   const availableTags = ['سینمایی', 'زیبا', 'هایپ', 'احساسی', 'حماسی', 'AMV', 'ویرایش', 'فن‌آرت']
 
@@ -263,6 +327,40 @@ export default function EditsPage() {
     } catch {
       toast('خطا در ارسال درخواست', 'error')
     }
+  }
+
+  /**
+   * کلیک روی کارت: فایل محلی → پخش‌کننده سیستم؛
+   * لینک پینترست/اینستاگرام/ویدیوی مستقیم → پخش داخلی در همان صفحه.
+   */
+  const openEdit = async (edit: MediaEdit) => {
+    const url = edit.videoUrl
+    if (!url) return
+    if (url.startsWith('/api/uploads/')) {
+      handlePlayExternal(url)
+      return
+    }
+    if (!/^https?:\/\//i.test(url)) {
+      handlePlayExternal(url)
+      return
+    }
+    try {
+      const res = await fetch(`/api/link-preview?url=${encodeURIComponent(url)}`)
+      const data = await res.json()
+      if (res.ok && (data.embedUrl || data.videoUrl)) {
+        setPlayer({
+          title: edit.title,
+          platform: data.platform,
+          embedUrl: data.embedUrl ?? null,
+          videoUrl: data.videoUrl ?? null,
+          originalUrl: url
+        })
+        return
+      }
+    } catch {
+      /* اگر تشخیص لینک شکست خورد، همان مسیر قبلی (مرورگر) اجرا می‌شود */
+    }
+    handlePlayExternal(url)
   }
 
   const filteredEdits = getFilteredEdits()
@@ -523,7 +621,7 @@ export default function EditsPage() {
                           return (
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-pink-500/15 border border-pink-500/30 text-pink-300 text-xs">
                               <LinkIcon className="w-3.5 h-3.5" />
-                              {platform} — در مرورگر پخش می‌شود
+                              {platform} — پخش داخلی در همان صفحه
                             </span>
                           )
                         }
@@ -531,7 +629,7 @@ export default function EditsPage() {
                           return (
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 border border-white/15 text-gray-300 text-xs">
                               <LinkIcon className="w-3.5 h-3.5" />
-                              لینک ویدیو — در مرورگر پخش می‌شود
+                              لینک ویدیو — پخش داخلی در همان صفحه
                             </span>
                           )
                         }
@@ -541,6 +639,35 @@ export default function EditsPage() {
                           </span>
                         )
                       })()}
+                    </div>
+                  )}
+                  {/* پیش‌نمایش زندهٔ لینک: پین/ریل همین‌جا می‌آید تا قبل از افزودن ببینی */}
+                  {linkPreview?.embedUrl && (
+                    <div className="flex items-center gap-4 mt-3 p-3 rounded-xl bg-white/5 border border-white/10">
+                      <iframe
+                        src={linkPreview.embedUrl}
+                        title="پیش‌نمایش لینک"
+                        className="w-40 h-56 rounded-lg border-0 bg-black shrink-0"
+                        allow="autoplay; encrypted-media"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-sm text-white font-medium flex items-center gap-1.5">
+                          <Check className="w-4 h-4 text-green-400" />
+                          لینک شناخته شد — {linkPreview.platform}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-2 leading-5">
+                          این ویدیو بعد از افزودن، همین‌جا داخل برنامه پخش می‌شود؛
+                          لازم نیست به پینترست یا اینستاگرام بروید.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {linkPreview?.videoUrl && !linkPreview.embedUrl && (
+                    <div className="flex items-center gap-2 mt-3 p-3 rounded-xl bg-white/5 border border-white/10">
+                      <Check className="w-4 h-4 text-green-400 shrink-0" />
+                      <p className="text-xs text-gray-400 leading-5">
+                        ویدیوی مستقیم شناخته شد — بعد از افزودن، پخش آن داخل همان کارت انجام می‌شود.
+                      </p>
                     </div>
                   )}
                   {!newEdit.videoUrl.startsWith('/api/uploads/') && /^https?:\/\//i.test(newEdit.videoUrl.trim()) && (
@@ -630,8 +757,10 @@ export default function EditsPage() {
                     className="glass-card overflow-hidden group hover:scale-[1.02] transition-all duration-300"
                   >
                     <div
-                      className="relative aspect-video cursor-pointer"
-                      onClick={() => handlePlayExternal(edit.videoUrl)}
+                      className={`relative aspect-video cursor-pointer ${
+                        linkPlatform(edit.videoUrl) ? 'hover:ring-1 hover:ring-pink-500/40' : ''
+                      }`}
+                      onClick={() => openEdit(edit)}
                     >
                       {edit.thumbnailUrl ? (
                         <img
@@ -644,15 +773,19 @@ export default function EditsPage() {
                           <Film className="w-12 h-12 text-violet-400" />
                         </div>
                       )}
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5">
                         <div className="w-16 h-16 rounded-full bg-violet-500/80 flex items-center justify-center">
                           <Play className="w-8 h-8 text-white mr-1" />
                         </div>
+                        {linkPlatform(edit.videoUrl) && (
+                          <span className="text-[11px] text-white/90 bg-black/50 backdrop-blur-sm px-2 py-0.5 rounded-full">
+                            پخش در همین صفحه
+                          </span>
+                        )}
                       </div>
                       {linkPlatform(edit.videoUrl) && (
-                        <span className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-full bg-black/70 backdrop-blur-sm text-[11px] text-white">
-                          <LinkIcon className="w-3 h-3" />
-                          {linkPlatform(edit.videoUrl)}
+                        <span className="absolute top-2 right-2">
+                          <PlatformBadge platform={linkPlatform(edit.videoUrl)!} compact />
                         </span>
                       )}
                     </div>
@@ -865,6 +998,59 @@ export default function EditsPage() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* مودال پخش داخلی — ویدیوی پینترست/اینستاگرام همین‌جا اجرا می‌شود */}
+      {player && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in"
+          onClick={() => setPlayer(null)}
+        >
+          <div className="relative w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setPlayer(null)}
+              title="بستن (Esc)"
+              className="absolute -top-11 right-0 p-2 text-gray-400 hover:text-white transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <div className="rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_80px_rgba(236,72,153,0.18)] bg-black">
+              {player.embedUrl ? (
+                <iframe
+                  src={player.embedUrl}
+                  title={player.title}
+                  className="w-full h-[72vh] max-h-[760px] border-0"
+                  allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                  allowFullScreen
+                />
+              ) : player.videoUrl ? (
+                <video
+                  src={player.videoUrl}
+                  controls
+                  autoPlay
+                  className="w-full max-h-[72vh] bg-black"
+                />
+              ) : null}
+            </div>
+            <div className="flex items-center justify-between gap-3 mt-3">
+              <div className="min-w-0 flex items-center gap-2">
+                {player.platform && <PlatformBadge platform={player.platform} />}
+                <p className="text-white font-medium truncate text-sm">{player.title}</p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                {player.originalUrl && (
+                  <button
+                    onClick={() => window.open(player.originalUrl, '_blank', 'noopener,noreferrer')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-500 text-white text-xs font-medium hover:bg-violet-600 transition-colors"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    باز کردن در سایت
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
