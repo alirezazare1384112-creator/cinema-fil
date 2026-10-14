@@ -7,6 +7,20 @@ import { useToast } from '@/components/Toast'
 import { extractPoster } from '@/lib/videoPoster'
 import { uploadFile, saveImageUrl } from '@/lib/uploadFile'
 
+/** تشخیص پلتفرم لینک برای نمایش بج روی کارت/فرم */
+function linkPlatform(url: string): string | null {
+  try {
+    const u = new URL(url.trim())
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null
+    const h = u.hostname.toLowerCase().replace(/^www\./, '')
+    if (h === 'instagram.com' || h.endsWith('.instagram.com')) return 'Instagram'
+    if (h === 'pin.it' || h.endsWith('.pinimg.com') || h.startsWith('pinterest.') || h.includes('.pinterest.')) return 'Pinterest'
+    return null
+  } catch {
+    return null
+  }
+}
+
 export default function EditsPage() {
   const { toast } = useToast()
   const [edits, setEdits] = useState<MediaEdit[]>([])
@@ -72,7 +86,33 @@ export default function EditsPage() {
   const handleAddEdit = async () => {
     if (!currentFolder || !newEdit.title || !newEdit.videoUrl) return
 
+    // اعتبارسنجی لینک: اگر http(s) است باید URL معتبر باشد
+    const rawUrl = newEdit.videoUrl.trim()
+    const isExternal = /^https?:\/\//i.test(rawUrl)
+    if (isExternal) {
+      try {
+        const u = new URL(rawUrl)
+        if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error('bad protocol')
+      } catch {
+        toast('لینک ویدیو نامعتبر است', 'warning')
+        return
+      }
+    } else if (rawUrl && !rawUrl.startsWith('/')) {
+      toast('لینک باید با https:// شروع شود', 'warning')
+      return
+    }
+
     try {
+      // کاورِ لینکی یک‌بار دانلود و محلی می‌شود تا به سایت مبدأ وابسته نماند
+      let thumbnailUrl = newEdit.thumbnailUrl.trim() || null
+      if (thumbnailUrl && /^https?:\/\//i.test(thumbnailUrl)) {
+        try {
+          thumbnailUrl = await saveImageUrl(thumbnailUrl)
+        } catch {
+          toast('کاور از لینک دریافت نشد؛ همان آدرس خام استفاده شد', 'warning')
+        }
+      }
+
       const response = await fetch('/api/edits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -80,8 +120,8 @@ export default function EditsPage() {
           folderId: currentFolder.id,
           title: newEdit.title,
           description: newEdit.description || null,
-          videoUrl: newEdit.videoUrl,
-          thumbnailUrl: newEdit.thumbnailUrl || null,
+          videoUrl: rawUrl,
+          thumbnailUrl,
           tags: newEdit.tags.length > 0 ? newEdit.tags : null,
           audioInfo: newEdit.audioInfo || null
         })
@@ -216,7 +256,10 @@ export default function EditsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ filePath: url })
       })
-      if (!res.ok) toast('نمی‌توان پخش‌کننده را باز کرد', 'error')
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) toast(data.error || 'نمی‌توان پخش‌کننده را باز کرد', 'error')
+      else if (data.url) toast('لینک در مرورگر پیش‌فرض باز شد', 'success')
+      else toast('ویدیو در حال پخش است', 'success')
     } catch {
       toast('خطا در ارسال درخواست', 'error')
     }
@@ -461,13 +504,54 @@ export default function EditsPage() {
                       </div>
                     )}
                   </div>
+                  <p className="text-xs text-gray-500 mt-3 mb-1">
+                    یا افزودن از لینک — پینترست، اینستاگرام یا لینک مستقیم ویدیو
+                  </p>
                   <input
                     type="text"
                     value={newEdit.videoUrl.startsWith('/api/uploads/') ? '' : newEdit.videoUrl}
                     onChange={(e) => setNewEdit({ ...newEdit, videoUrl: e.target.value })}
-                    placeholder="یا لینک ویدیو... (اختیاری)"
+                    placeholder="https://www.instagram.com/reel/... یا https://pin.it/..."
                     className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500 mt-2"
                   />
+                  {!newEdit.videoUrl.startsWith('/api/uploads/') && newEdit.videoUrl && (
+                    <div className="flex items-center gap-2 mt-2">
+                      {(() => {
+                        const platform = linkPlatform(newEdit.videoUrl)
+                        const valid = /^https?:\/\//i.test(newEdit.videoUrl.trim())
+                        if (platform) {
+                          return (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-pink-500/15 border border-pink-500/30 text-pink-300 text-xs">
+                              <LinkIcon className="w-3.5 h-3.5" />
+                              {platform} — در مرورگر پخش می‌شود
+                            </span>
+                          )
+                        }
+                        if (valid) {
+                          return (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 border border-white/15 text-gray-300 text-xs">
+                              <LinkIcon className="w-3.5 h-3.5" />
+                              لینک ویدیو — در مرورگر پخش می‌شود
+                            </span>
+                          )
+                        }
+                        return (
+                          <span className="text-xs text-amber-400">
+                            لینک باید با https:// شروع شود
+                          </span>
+                        )
+                      })()}
+                    </div>
+                  )}
+                  {!newEdit.videoUrl.startsWith('/api/uploads/') && /^https?:\/\//i.test(newEdit.videoUrl.trim()) && (
+                    <input
+                      type="text"
+                      value={newEdit.thumbnailUrl}
+                      onChange={(e) => setNewEdit({ ...newEdit, thumbnailUrl: e.target.value })}
+                      placeholder="لینک کاور/تصویر شاخص (اختیاری)"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500 mt-2"
+                    />
+                  )}
                 </div>
                 <div className="col-span-2">
                   <label className="block text-sm text-gray-400 mb-2">توضیحات</label>
@@ -565,6 +649,12 @@ export default function EditsPage() {
                           <Play className="w-8 h-8 text-white mr-1" />
                         </div>
                       </div>
+                      {linkPlatform(edit.videoUrl) && (
+                        <span className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-full bg-black/70 backdrop-blur-sm text-[11px] text-white">
+                          <LinkIcon className="w-3 h-3" />
+                          {linkPlatform(edit.videoUrl)}
+                        </span>
+                      )}
                     </div>
 
                     <div className="p-4">

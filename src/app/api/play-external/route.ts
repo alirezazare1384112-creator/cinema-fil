@@ -298,6 +298,26 @@ function openWithShell(target: string): void {
   }
 }
 
+/**
+ * باز کردن لینک وب (پینترست/اینستاگرام/...) در مرورگر پیش‌فرض.
+ * از rundll32 استفاده می‌شود چون:
+ * - بدون واسطهٔ cmd/start است → کاراکترهای & و ? در لینک خراب نمی‌شوند
+ * - برخلاف فایل محلی، نیازی به بستن پخش‌کنندهٔ در حال اجرا نیست
+ */
+function openUrl(url: string): void {
+  try {
+    const child = spawn('rundll32.exe', ['url.dll,FileProtocolHandler', url], {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: true
+    })
+    child.on('error', (err) => console.error('open url error:', err.message))
+    child.unref()
+  } catch (error) {
+    console.error('open url failed:', error)
+  }
+}
+
 function firstAvailableDesktopPlayer(): string | null {
   const fromEnv = process.env.CINEPHILE_PLAYER
   if (fromEnv) {
@@ -467,13 +487,10 @@ export async function POST(request: NextRequest) {
 
       const target = filePath.startsWith('/') ? `http://localhost:3000${filePath}` : filePath
       console.log('Play URL:', target)
-      // آدرس وب را فقط با هندلر پیش‌فرض باز می‌کنیم (تأیید عنوان پنجره معنا ندارد)
-      const outcome = await withPlayLock(() =>
-        requestId === latestRequest
-          ? openAndVerify(target, { verify: false })
-          : Promise.resolve(superseded())
-      )
-      return NextResponse.json({ resolvedPath: target, url: true, ...outcome })
+      // لینک وب (پینترست/اینستاگرام/لینک مستقیم) در مرورگر پیش‌فرض باز می‌شود؛
+      // برخلاف فایل محلی، پخش‌کنندهٔ در حال اجرای کاربر نباید بسته شود.
+      openUrl(target)
+      return NextResponse.json({ resolvedPath: target, url: true, success: true })
     }
 
     const resolved = resolveFilePath(filePath, folderPath)

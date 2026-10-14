@@ -123,6 +123,7 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) toast(data.error || 'نمی‌توان پخش‌کننده را باز کرد', 'error')
+      else if (data.url) toast('لینک در مرورگر پیش‌فرض باز شد', 'success')
       else toast('فیلم در حال پخش است', 'success')
     } catch {
       toast('خطا در ارسال درخواست', 'error')
