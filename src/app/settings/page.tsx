@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Settings, Save, Key, Database, Info, ExternalLink, Palette, Check, Star } from 'lucide-react'
 import { THEMES, THEME_STORAGE_KEY, applyTheme, getStoredThemeId } from '@/lib/themes'
+import ThemePreview from '@/components/ThemePreview'
 
 export default function SettingsPage() {
   const [tmdbApiKey, setTmdbApiKey] = useState('')
@@ -52,12 +53,13 @@ export default function SettingsPage() {
             تم و ظاهر
           </h2>
           <p className="text-gray-400 mb-5 text-sm">
-            تمی بر اساس شخصیت‌ها و فیلم/سریال‌های محبوب انتخاب کن؛ همان لحظه در کل برنامه اعمال و برای دفعات بعد ذخیره می‌شود.
+            تمی بر اساس شخصیت‌ها و فیلم/سریال‌های محبوب انتخاب کن؛ هر تم فقط رنگ عوض نمی‌کند، بلکه الگوی پس‌زمینه، فونت، اسکرول‌بار، حس و حال و آیکونِ سایدبار خودش را دارد. همین لحظه در کل برنامه اعمال و برای دفعات بعد ذخیره می‌شود.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {THEMES.map((theme) => {
               const isActive = activeTheme === theme.id
+              const Icon = theme.icon
               return (
                 <button
                   key={theme.id}
@@ -65,52 +67,41 @@ export default function SettingsPage() {
                     applyTheme(theme.id)
                     setActiveTheme(theme.id)
                   }}
-                  className={`relative text-right rounded-xl border p-4 transition-all ${
-                    isActive ? 'bg-white/10' : 'bg-white/[0.02] hover:bg-white/[0.06] border-white/10 hover:border-white/25'
+                  className={`relative text-right rounded-xl border p-0 transition-all overflow-hidden ${
+                    isActive ? 'border-2' : 'border border-white/10 hover:border-white/30'
                   }`}
-                  style={isActive ? { borderColor: theme.swatch[0], boxShadow: `0 0 0 1px ${theme.swatch[0]}, 0 8px 24px -12px ${theme.swatch[0]}` } : undefined}
+                  style={isActive ? { borderColor: theme.swatch[0], boxShadow: `0 0 0 1px ${theme.swatch[0]}, 0 12px 32px -10px ${theme.swatch[0]}99` } : undefined}
                 >
                   {isActive && (
                     <span
-                      className="absolute top-3 left-3 w-5 h-5 rounded-full flex items-center justify-center"
+                      className="absolute top-3 left-3 z-20 w-6 h-6 rounded-full flex items-center justify-center shadow-lg"
                       style={{ backgroundColor: theme.swatch[0] }}
                     >
-                      <Check className="w-3.5 h-3.5 text-white" />
+                      <Check className="w-4 h-4 text-white" strokeWidth={3} />
                     </span>
                   )}
 
-                  <span
-                    className="block h-2.5 w-full rounded-full mb-3"
-                    style={{ background: `linear-gradient(90deg, ${theme.swatch.join(', ')})` }}
-                  />
+                  <ThemePreview theme={theme} />
 
-                  <span className="block text-sm font-semibold text-white">{theme.name}</span>
-                  <span className="block text-[11px] text-gray-500 mt-0.5" dir="ltr" style={{ textAlign: 'right' }}>
-                    {theme.source}
-                  </span>
-                  <span className="block text-xs text-gray-400 mt-1">{theme.description}</span>
-
-                  <span className="flex items-center gap-2 mt-3">
-                    <span
-                      className="px-2.5 py-1 rounded-lg text-[11px] font-medium text-white"
-                      style={{ backgroundColor: theme.swatch[0] }}
-                    >
-                      دکمه
+                  <div className="p-4 text-right">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Icon className="w-4 h-4 shrink-0" style={{ color: theme.swatch[0] }} />
+                      <span className="block text-sm font-semibold text-white truncate">{theme.name}</span>
+                    </div>
+                    <span className="block text-[11px] text-gray-500 mt-0.5" dir="ltr" style={{ textAlign: 'right' }}>
+                      {theme.source}
                     </span>
-                    <span className="px-2.5 py-1 rounded-lg text-[11px]" style={{ backgroundColor: `${theme.swatch[1]}26`, color: theme.swatch[1] }}>
-                      کارت
-                    </span>
-                    <span className="text-[11px]" style={{ color: theme.swatch[0] }}>
-                      متن لهجه‌ای
-                    </span>
-                  </span>
+                    <p className="block text-[11px] text-gray-400 mt-2 leading-relaxed line-clamp-2">
+                      {theme.atmosphere}
+                    </p>
+                  </div>
                 </button>
               )
             })}
           </div>
 
           <p className="text-xs text-gray-500 mt-4">
-            انتخاب تو در همین مرورگر ذخیره می‌شود (کلید <code className="text-gray-400" dir="ltr">{THEME_STORAGE_KEY}</code>).
+            انتخاب تو در همین مرورگر ذخیره می‌شود (کلید <code className="text-gray-400" dir="ltr">{THEME_STORAGE_KEY}</code>). آیکون بالای سایدبار هم با تم عوض می‌شود.
           </p>
         </div>
 
