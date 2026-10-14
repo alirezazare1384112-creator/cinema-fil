@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Sparkles, TrendingUp, Film, Tv, ArrowUpDown, CalendarDays, Star, Layers } from 'lucide-react'
 import SearchBar from '@/components/SearchBar'
 import MediaPreviewModal from '@/components/MediaPreviewModal'
+import RatingsBadge from '@/components/RatingsBadge'
 import { getPosterURL, genreLabels } from '@/lib/tmdb'
 import { prefetchDetails } from '@/lib/details-cache'
 import { sharedJson } from '@/lib/api-cache'
@@ -317,13 +318,17 @@ export default function DiscoverPage() {
                     <img
                       src={getPosterURL(item.poster_path)}
                       alt={title}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" loading="lazy" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
-                    <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-black/60 backdrop-blur-sm flex items-center gap-1">
-                      <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                      <span className="text-xs font-medium text-yellow-300">{(item.vote_average || 0).toFixed(1)}</span>
+                    <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+                      {/* نمرهٔ IMDb واقعی از OMDb — با lazy loading و کشِ localStorage */}
+                      <RatingsBadge
+                        title={title}
+                        year={year || null}
+                        type={type as 'movie' | 'tv'}
+                        fallbackRating={item.vote_average}
+                      />
                     </div>
 
                     {saved && (

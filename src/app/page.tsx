@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { TrendingUp, Clock, Eye, Play, Film, Tv, Sparkles } from 'lucide-react'
+import { Clock, Eye, Play, Film, Sparkles } from 'lucide-react'
 import { getPosterURL, getStoredApiKey } from '@/lib/tmdb'
 import { sharedJson } from '@/lib/api-cache'
+import RatingsBadge from '@/components/RatingsBadge'
 import type { Media } from '@/types'
 import type { TMDBMovie, TMDBTVShow } from '@/types'
 
@@ -136,8 +137,7 @@ export default function HomePage() {
                   <img
                     src={getPosterURL(media.posterPath ?? null)}
                     alt={media.title}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                  />
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" loading="lazy" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
                   <div className="absolute bottom-2 left-2 right-2">
                     <p className="text-sm font-medium text-white truncate">{media.title}</p>
@@ -169,11 +169,15 @@ export default function HomePage() {
                 <img
                   src={getPosterURL(item.poster_path)}
                   alt={getTitle(item)}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                />
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" loading="lazy" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
                 <div className="absolute top-2 right-2 px-2 py-1 rounded-full bg-black/60 backdrop-blur-sm">
-                  <span className="text-xs font-medium text-yellow-400">★ {item.vote_average.toFixed(1)}</span>
+                  <RatingsBadge
+                    title={getTitle(item)}
+                    year={getYear(item) || null}
+                    type={'title' in item ? 'movie' : 'tv'}
+                    fallbackRating={item.vote_average}
+                  />
                 </div>
                 <div className="absolute bottom-2 left-2 right-2">
                   <p className="text-xs font-medium text-white truncate">{getTitle(item)}</p>

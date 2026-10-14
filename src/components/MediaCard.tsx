@@ -3,6 +3,7 @@
 import { memo, useState, useRef } from 'react'
 import { Star, Eye, Clock, Play, MoreVertical, Trash2, Edit } from 'lucide-react'
 import { getPosterURL } from '@/lib/tmdb'
+import RatingsBadge from '@/components/RatingsBadge'
 import type { Media } from '@/types'
 
 interface MediaCardProps {
@@ -107,7 +108,16 @@ export default memo(function MediaCard({ media, onUpdate, onDelete, onSelect }: 
         <h3 className="font-semibold text-white truncate group-hover:text-violet-400 transition-colors">
           {media.title}
         </h3>
-        <p className="text-sm text-gray-400 mt-1">{media.releaseDate?.split('-')[0]}</p>
+        <div className="flex items-center justify-between mt-1 gap-2">
+          <p className="text-sm text-gray-400">{media.releaseDate?.split('-')[0]}</p>
+          {/* نمرهٔ IMDb با lazy loading — فقط وقتی کارت visible بشه fetch می‌کنه */}
+          <RatingsBadge
+            title={media.title}
+            year={(media.releaseDate || '').split('-')[0] || null}
+            type={media.mediaType === 'tv' || media.category === 'series' ? 'tv' : 'movie'}
+            fallbackRating={media.rating ?? null}
+          />
+        </div>
 
         {media.category === 'series' ? (
           <span className="inline-flex items-center gap-1 mt-2 text-xs px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300">

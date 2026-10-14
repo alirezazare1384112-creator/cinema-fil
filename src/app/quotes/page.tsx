@@ -226,15 +226,13 @@ export default function QuotesPage() {
           <img
             src={getBackdropURL(featured.backdropUrl, 'w1280')}
             alt=""
-            className="absolute inset-0 w-full h-full object-cover opacity-40"
-          />
+            className="absolute inset-0 w-full h-full object-cover opacity-40" loading="lazy" />
         )}
         {featured.gifUrl && !featured.backdropUrl && (
           <img
             src={featured.gifUrl}
             alt=""
-            className="absolute inset-0 w-full h-full object-cover opacity-30"
-          />
+            className="absolute inset-0 w-full h-full object-cover opacity-30" loading="lazy" />
         )}
         <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-[#0a0a0f]/80 to-[#0a0a0f]" />
         <Quote className="absolute -top-6 -right-6 w-40 h-40 text-white/5" />
@@ -331,8 +329,7 @@ export default function QuotesPage() {
                     <img
                       src={newQuote.gifUrl && !newQuote.backdropUrl ? newQuote.gifUrl : getBackdropURL(newQuote.backdropUrl, 'w300')}
                       alt=""
-                      className="w-28 h-20 rounded-lg object-cover"
-                    />
+                      className="w-28 h-20 rounded-lg object-cover" loading="lazy" />
                     <button
                       onClick={() => setNewQuote((p) => ({ ...p, backdropUrl: '', gifUrl: '' }))}
                       className="absolute -top-1.5 -left-1.5 p-1 rounded-full bg-red-500 text-white hover:bg-red-600"

@@ -770,8 +770,7 @@ export default function EditsPage() {
                         <img
                           src={edit.thumbnailUrl}
                           alt={edit.title}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                        />
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" loading="lazy" />
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-violet-500/20 to-pink-500/20 flex items-center justify-center">
                           <Film className="w-12 h-12 text-violet-400" />
@@ -892,8 +891,7 @@ export default function EditsPage() {
                       <img
                         src={folder.thumbnailUrl}
                         alt={folder.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                      />
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" loading="lazy" />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-violet-500/20 to-pink-500/20 flex items-center justify-center">
                         <Folder className="w-16 h-16 text-violet-400" />

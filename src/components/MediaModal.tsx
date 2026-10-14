@@ -300,8 +300,7 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
           <img
             src={getBackdropURL(media.backdropPath ?? null)}
             alt={title}
-            className="w-full h-full object-cover"
-          />
+            className="w-full h-full object-cover" loading="lazy" />
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
 
           <button
@@ -315,8 +314,7 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
             <img
               src={getPosterURL(poster ?? null, 'w200')}
               alt={title}
-              className="w-24 h-36 rounded-lg object-cover shadow-xl"
-            />
+              className="w-24 h-36 rounded-lg object-cover shadow-xl" loading="lazy" />
             <div className="flex-1">
               <h2 className="text-2xl font-bold text-white">{title || 'بدون نام'}</h2>
               <p className="text-gray-300 mt-1">{media.releaseDate}</p>
@@ -603,8 +601,7 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
                             <img
                               src={edit.thumbnailUrl}
                               alt={edit.title}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                            />
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
                           ) : (
                             <div className="w-full h-full bg-gradient-to-br from-violet-500/20 to-pink-500/20 flex items-center justify-center">
                               <FileVideo className="w-8 h-8 text-violet-400" />
@@ -669,7 +666,7 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
                 localFiles.map((f) => (
                   <div key={f.id} className="flex items-center gap-4 p-4 rounded-lg bg-white/5">
                     {f.poster || (media?.posterPath ? getPosterURL(media.posterPath, 'w500') : null) ? (
-                      <img src={f.poster || (media?.posterPath ? getPosterURL(media.posterPath, 'w500') : '')} alt="" className="w-12 h-16 object-cover rounded-lg shrink-0" />
+                      <img src={f.poster || (media?.posterPath ? getPosterURL(media.posterPath, 'w500') : '')} alt="" className="w-12 h-16 object-cover rounded-lg shrink-0" loading="lazy" />
                     ) : (
                       <HardDrive className="w-6 h-6 text-violet-400 shrink-0" />
                     )}

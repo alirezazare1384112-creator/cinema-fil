@@ -249,8 +249,7 @@ export default function MediaPreviewModal({ item, isOpen, onClose, onAdded }: Me
                               : `https://image.tmdb.org/t/p/w200${c.profile_path}`
                           }
                           alt={c.name}
-                          className="w-full h-full object-cover"
-                        />
+                          className="w-full h-full object-cover" loading="lazy" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-gray-500">
                           <Clapperboard className="w-6 h-6" />

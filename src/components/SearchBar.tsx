@@ -322,8 +322,7 @@ export default function SearchBar({ onSelect, onSelectLocalMedia, placeholder = 
                   <img
                     src={getPosterURL(m.posterPath ?? null, 'w200')}
                     alt={m.title}
-                    className="w-10 h-14 rounded-lg object-cover"
-                  />
+                    className="w-10 h-14 rounded-lg object-cover" loading="lazy" />
                   <div className="flex-1 text-right">
                     <h4 className="font-medium text-white">{m.title}</h4>
                     <div className="flex items-center gap-2 mt-1 justify-end">
@@ -357,8 +356,7 @@ export default function SearchBar({ onSelect, onSelectLocalMedia, placeholder = 
                   <img
                     src={getPosterURL(item.poster_path, 'w200')}
                     alt={getTitle(item)}
-                    className="w-12 h-16 rounded-lg object-cover"
-                  />
+                    className="w-12 h-16 rounded-lg object-cover" loading="lazy" />
                   <div className="flex-1 text-right">
                     <h4 className="font-medium text-white">{getTitle(item)}</h4>
                     <div className="flex items-center gap-2 mt-1 justify-end">

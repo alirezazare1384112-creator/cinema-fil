@@ -138,7 +138,7 @@ const FileCard = React.memo(function FileCard({ file, onUpdate, onDelete, onPlay
       <div className="flex items-start gap-4">
         <div className="w-20 h-28 rounded-xl bg-gradient-to-br from-violet-500/20 to-pink-500/20 flex items-center justify-center flex-shrink-0 overflow-hidden group-hover:ring-2 group-hover:ring-violet-500/50 transition-all">
           {displayPoster ? (
-            <img src={displayPoster} alt="" className="w-full h-full object-cover" />
+            <img src={displayPoster} alt="" className="w-full h-full object-cover" loading="lazy" />
           ) : (
             <FormatIcon className="w-8 h-8 text-violet-400" />
           )}
