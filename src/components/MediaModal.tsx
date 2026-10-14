@@ -293,8 +293,8 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl glass-card animate-fade-in">
-        <div className="relative h-64 md:h-80">
+      <div className="relative w-full max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl glass-card animate-fade-in flex flex-col">
+        <div className="relative h-64 md:h-80 shrink-0">
           <img
             src={getBackdropURL(media.backdropPath ?? null)}
             alt={title}
@@ -335,7 +335,7 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
           </div>
         </div>
 
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto flex-1 min-h-0">
           <div className="flex gap-4 border-b border-white/10 mb-6">
             <button
               onClick={() => setActiveTab('details')}
@@ -384,8 +384,8 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
 
           {activeTab === 'details' && (
             <div className="space-y-6">
-              {/* بدون فایل محلی؟ لینک‌های دانلودِ سایت — همان اول کار دیده شود */}
-              {localFiles.length === 0 && !localLoading && (
+              {/* لینک‌های دانلود/زیرنویس/تریلر — همیشه در تب جزئیات قابل دسترس */}
+              {!localLoading && (
                 <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-4">
                   {linksLoading && (
                     <p className="text-xs text-gray-400 flex items-center gap-2">
@@ -400,6 +400,15 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
                         تلاش دوباره
                       </button>
                     </p>
+                  )}
+                  {localFiles.length > 0 && !links && !linksLoading && !linksError && (
+                    <button
+                      onClick={loadLinks}
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/15 border border-emerald-500/25 text-emerald-300 text-sm hover:bg-emerald-500/25 transition-colors"
+                    >
+                      <Download className="w-4 h-4" />
+                      نمایش لینک‌های دانلود، زیرنویس و تریلر
+                    </button>
                   )}
                   <DownloadLinks
                     downloads={links?.downloads}
