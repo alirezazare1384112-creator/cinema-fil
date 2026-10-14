@@ -80,7 +80,8 @@ export async function getTrending(mediaType: 'all' | 'movie' | 'tv' = 'all', api
 
 export async function getDetails(id: number, type: 'movie' | 'tv', apiKey?: string) {
   const key = resolveKey(apiKey)
-  const url = `${TMDB_BASE_URL}/${type}/${id}?api_key=${key}&append_to_response=credits,videos&language=fa`
+  // external_ids برای گرفتن imdb_id (تا بتوانیم از OMDb، نمرهٔ دقیق IMDb و Rotten Tomatoes بگیریم)
+  const url = `${TMDB_BASE_URL}/${type}/${id}?api_key=${key}&append_to_response=credits,videos,external_ids&language=fa`
   return fetchJson(url, TTL.details, 'دریافت جزئیات با خطا مواجه شد')
 }
 

@@ -1,26 +1,38 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Settings, Save, Key, Database, Info, ExternalLink, Palette, Check } from 'lucide-react'
+import { Settings, Save, Key, Database, Info, ExternalLink, Palette, Check, Star } from 'lucide-react'
 import { THEMES, THEME_STORAGE_KEY, applyTheme, getStoredThemeId } from '@/lib/themes'
 
 export default function SettingsPage() {
   const [tmdbApiKey, setTmdbApiKey] = useState('')
-  const [saved, setSaved] = useState(false)
+  const [omdbApiKey, setOmdbApiKey] = useState('')
+  const [savedTmdb, setSavedTmdb] = useState(false)
+  const [savedOmdb, setSavedOmdb] = useState(false)
   const [activeTheme, setActiveTheme] = useState('default')
 
   useEffect(() => {
-    const savedKey = localStorage.getItem('tmdb_api_key')
-    if (savedKey) {
-      setTmdbApiKey(savedKey)
+    const savedTmdbKey = localStorage.getItem('tmdb_api_key')
+    if (savedTmdbKey) {
+      setTmdbApiKey(savedTmdbKey)
+    }
+    const savedOmdb = localStorage.getItem('omdb_api_key')
+    if (savedOmdb) {
+      setOmdbApiKey(savedOmdb)
     }
     setActiveTheme(getStoredThemeId())
   }, [])
 
-  const handleSave = () => {
+  const handleSaveTmdb = () => {
     localStorage.setItem('tmdb_api_key', tmdbApiKey)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    setSavedTmdb(true)
+    setTimeout(() => setSavedTmdb(false), 2000)
+  }
+
+  const handleSaveOmdb = () => {
+    localStorage.setItem('omdb_api_key', omdbApiKey)
+    setSavedOmdb(true)
+    setTimeout(() => setSavedOmdb(false), 2000)
   }
 
   return (
@@ -135,20 +147,72 @@ export default function SettingsPage() {
               className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500"
             />
             <button
-              onClick={handleSave}
+              onClick={handleSaveTmdb}
               className={`flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-all ${
-                saved
+                savedTmdb
                   ? 'bg-green-500 text-white'
                   : 'bg-violet-500 text-white hover:bg-violet-600'
               }`}
             >
               <Save className="w-4 h-4" />
-              {saved ? 'ذخیره شد!' : 'ذخیره'}
+              {savedTmdb ? 'ذخیره شد!' : 'ذخیره'}
             </button>
           </div>
 
           <p className="text-xs text-gray-500 mt-3">
             توجه: برای استفاده در تولید، کلید API را در فایل .env به عنوان NEXT_PUBLIC_TMDB_API_KEY تنظیم کنید
+          </p>
+        </div>
+
+        <div className="glass-card p-6">
+          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <Star className="w-5 h-5 text-amber-400" />
+            نمره‌های IMDb و Rotten Tomatoes
+          </h2>
+          <p className="text-gray-400 mb-4">
+            با تنظیم کلید OMDb API، در صفحهٔ جزئیات فیلم/سریال، علاوه بر نمرهٔ IMDb، نمرهٔ Rotten Tomatoes و Metacritic هم نمایش داده می‌شود.
+          </p>
+
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 mb-4">
+            <div className="flex items-start gap-3">
+              <Info className="w-5 h-5 text-amber-400 mt-0.5" />
+              <div>
+                <p className="text-sm text-amber-300 font-medium">نحوه دریافت کلید OMDb:</p>
+                <ol className="text-sm text-gray-400 mt-2 list-decimal list-inside space-y-1">
+                  <li>به <a href="https://www.omdbapi.com/apikey.aspx" target="_blank" rel="noopener noreferrer" className="text-amber-400 hover:underline inline-flex items-center gap-1">صفحهٔ دریافت کلید OMDb <ExternalLink className="w-3 h-3" /></a> مراجعه کنید</li>
+                  <li>ایمیل خود را وارد و گزینهٔ «Free» (۱۰۰۰ درخواست در روز) را انتخاب کنید</li>
+                  <li>کلید به ایمیل شما فرستاده می‌شود — آن را کپی کرده و در زیر وارد کنید</li>
+                </ol>
+                <p className="text-xs text-gray-500 mt-3">
+                  بدون این کلید هم برنامه کار می‌کند؛ فقط به‌جای نمرهٔ دقیق IMDb از OMDb، همان نمرهٔ سایت فیلم به‌صورت «تقریبی» نمایش داده می‌شود و نمرهٔ Rotten Tomatoes و Metacritic پنهان می‌شود.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-4">
+            <input
+              type="password"
+              value={omdbApiKey}
+              onChange={(e) => setOmdbApiKey(e.target.value)}
+              placeholder="کلید API OMDb خود را وارد کنید..."
+              className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-amber-500"
+            />
+            <button
+              onClick={handleSaveOmdb}
+              className={`flex items-center gap-2 px-6 py-2 rounded-lg font-medium transition-all ${
+                savedOmdb
+                  ? 'bg-green-500 text-white'
+                  : 'bg-amber-500 text-white hover:bg-amber-600'
+              }`}
+            >
+              <Save className="w-4 h-4" />
+              {savedOmdb ? 'ذخیره شد!' : 'ذخیره'}
+            </button>
+          </div>
+
+          <p className="text-xs text-gray-500 mt-3">
+            توجه: برای استفاده در تولید، کلید را در فایل .env به عنوان OMDB_API_KEY تنظیم کنید
           </p>
         </div>
 

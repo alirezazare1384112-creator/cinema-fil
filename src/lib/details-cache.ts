@@ -8,6 +8,8 @@ export interface PreviewDetails {
   downloads?: { group: string; quality: string; url: string }[]
   subtitles?: { label: string; url: string }[]
   trailer?: string | null
+  /** شناسهٔ IMDb از TMDB (external_ids.imdb_id) — برای واکشی نمره از OMDb */
+  imdbId?: string | null
 }
 
 type Prefetchable =
@@ -54,7 +56,8 @@ function normalize(data: Record<string, unknown>, item: Prefetchable): PreviewDe
       subtitles: Array.isArray(data.subtitles)
         ? (data.subtitles as NonNullable<PreviewDetails['subtitles']>)
         : [],
-      trailer: (data.trailer as string) || null
+      trailer: (data.trailer as string) || null,
+      imdbId: (data.imdbId as string | null) || null
     }
   }
 
@@ -68,10 +71,12 @@ function normalize(data: Record<string, unknown>, item: Prefetchable): PreviewDe
     }))
   const videos = (data.videos || {}) as { results?: { site: string; type: string; key: string }[] }
   const trailer = (videos.results || []).find((v) => v.site === 'YouTube' && v.type === 'Trailer')
+  const externalIds = (data.external_ids || {}) as { imdb_id?: string | null }
   return {
     cast,
     trailerKey: trailer?.key,
-    overview: (data.overview as string) || ''
+    overview: (data.overview as string) || '',
+    imdbId: externalIds.imdb_id || null
   }
 }
 

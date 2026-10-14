@@ -5,6 +5,7 @@ import { X, Star, Clock, Eye, Play, Save, FileVideo, Quote, HardDrive, Upload, L
 import { getBackdropURL, getPosterURL, genreNames } from '@/lib/tmdb'
 import { uploadFile, saveImageUrl, isImageBright } from '@/lib/uploadFile'
 import DownloadLinks from '@/components/DownloadLinks'
+import Ratings from '@/components/Ratings'
 import type { Media, MediaEdit } from '@/types'
 import { useToast } from '@/components/Toast'
 
@@ -332,6 +333,16 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
                   ))}
                 </div>
               )}
+              {/* نمرات IMDb / Rotten Tomatoes / Metacritic — از OMDb با عنوان + سال */}
+              <div className="mt-2">
+                <Ratings
+                  title={media.title}
+                  year={(media.releaseDate || '').split('-')[0] || null}
+                  type={media.mediaType === 'tv' || media.category === 'series' ? 'tv' : 'movie'}
+                  fallbackRating={media.rating ?? null}
+                  size="sm"
+                />
+              </div>
             </div>
           </div>
         </div>

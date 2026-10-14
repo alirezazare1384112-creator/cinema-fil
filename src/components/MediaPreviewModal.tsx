@@ -5,6 +5,7 @@ import { X, Star, Play, Plus, Check, Clapperboard } from 'lucide-react'
 import { getBackdropURL, getPosterURL, genreLabels, viaImageProxy } from '@/lib/tmdb'
 import { getDetails } from '@/lib/details-cache'
 import DownloadLinks from '@/components/DownloadLinks'
+import Ratings from '@/components/Ratings'
 import type { TMDBMovie, TMDBTVShow, Media } from '@/types'
 
 interface MediaPreviewModalProps {
@@ -21,6 +22,8 @@ interface Details {
   downloads?: { group: string; quality: string; url: string }[]
   subtitles?: { label: string; url: string }[]
   trailer?: string | null
+  /** شناسهٔ IMDb از TMDB external_ids یا از سایت فیلم */
+  imdbId?: string | null
 }
 
 function fullSizePoster(url: string | null | undefined): string | null {
@@ -152,9 +155,18 @@ export default function MediaPreviewModal({ item, isOpen, onClose, onAdded }: Me
               <h2 className="text-2xl md:text-3xl font-bold text-white mt-2 leading-tight">{title}</h2>
 
               <div className="flex items-center gap-4 mt-3 flex-wrap">
+                {/* نمرات IMDb / Rotten Tomatoes / Metacritic از OMDb (یا فالبک از vote_average) */}
+                <Ratings
+                  imdbId={details?.imdbId}
+                  title={title}
+                  year={year || null}
+                  type={mediaType}
+                  fallbackRating={rating}
+                  size="md"
+                />
                 {rating > 0 && (
-                  <span className="flex items-center gap-1 text-yellow-400 font-medium">
-                    <Star className="w-4 h-4 fill-yellow-400" />
+                  <span className="flex items-center gap-1 text-xs text-gray-500" title="نمره نمایش‌داده‌شده در منبع کشف">
+                    <Star className="w-3 h-3 fill-gray-500 text-gray-500" />
                     {rating.toFixed(1)}
                   </span>
                 )}

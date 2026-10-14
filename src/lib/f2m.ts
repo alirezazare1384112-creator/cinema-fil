@@ -52,6 +52,8 @@ export interface F2MDetails {
   downloads: F2MDownload[]
   subtitles: F2MSubtitleLink[]
   trailer: string | null
+  /** شناسهٔ IMDb اگر در صفحهٔ سایت فیلم لینک IMDb وجود داشت */
+  imdbId: string | null
 }
 
 const F2M_BASE = (process.env.F2M_BASE || 'https://f2medx.top').replace(/\/+$/, '')
@@ -574,7 +576,8 @@ export async function fetchDetails(url: string): Promise<F2MDetails> {
     cast: extractCast(html),
     downloads: extractDownloads(html),
     subtitles: await extractSubtitles(html, url, subzoneLink),
-    trailer: extractTrailerUrl(html)
+    trailer: extractTrailerUrl(html),
+    imdbId: extractImdbId(html)
   }
 }
 
@@ -715,6 +718,28 @@ function extractTrailerUrl(html: string): string | null {
   if (video) return video[1].replace(/&amp;/g, '&')
   const yt = chunk.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{6,})/)
   if (yt) return `https://www.youtube.com/watch?v=${yt[1]}`
+  return null
+}
+
+/**
+ * شناسهٔ IMDb را از صفحهٔ سایت فیلم استخراج می‌کند.
+ * سایت معمولاً در یک از این دو شکل به IMDb لینک می‌دهد:
+ *   1) href="https://www.imdb.com/title/tt1375666/"
+ *   2) ویژگی داده مثل data-imdb="tt1375666" یا در JSON-LD
+ */
+function extractImdbId(html: string): string | null {
+  // ۱) لینک مستقیم به IMDb
+  const link = html.match(/imdb\.com\/title\/(tt\d{6,12})/i)
+  if (link) return link[1]
+
+  // ۲) JSON-LD با sameAs یا identifier
+  const ldMatch = html.match(/"imdbId"[\s\S]{0,80}?"(tt\d{6,12})"/i)
+  if (ldMatch) return ldMatch[1]
+
+  // ۳) ویژگی data-*
+  const data = html.match(/data-imdb-id?="?(tt\d{6,12})"?/i)
+  if (data) return data[1]
+
   return null
 }
 
