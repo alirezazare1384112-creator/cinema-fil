@@ -31,7 +31,7 @@ echo  برای خاموش کردن کامل، این پنجره را ببندی�
 echo ============================================================
 
 rem باز شدن مرورگر پیش‌فرض کاربر پس از آماده شدن سرور
-start "" /B cmd /c "timeout /t 10 /nobreak >nul && start "" http://localhost:3000"
+start "" /B cmd /c "timeout /t 10 /nobreak >nul && start msedge http://localhost:3000"
 
 :loop
 call npm run dev
