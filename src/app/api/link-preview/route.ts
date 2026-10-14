@@ -7,6 +7,59 @@ interface LinkPreview {
   embedUrl: string | null
   videoUrl: string | null
   watchUrl: string | null
+  thumbnail: string | null
+}
+
+const BROWSER_UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
+
+function extractOgImage(html: string): string | null {
+  const m =
+    html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ||
+    html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i)
+  return m ? m[1] : null
+}
+
+/** پوستر پین از API رسمی ویجت پینترست (همانی که خودِ امبد استفاده می‌کند)؛ fallback: og:image صفحهٔ پین. */
+async function fetchPinterestPoster(pinId: string): Promise<string | null> {
+  try {
+    const res = await fetch(`https://widgets.pinterest.com/v3/pidgets/pins/info/?pin_ids=${pinId}`, {
+      headers: { 'User-Agent': BROWSER_UA },
+      signal: AbortSignal.timeout(6000)
+    })
+    if (res.ok) {
+      const data = await res.json()
+      const images = data?.[0]?.images
+      const url = images?.orig?.url || images?.['736x']?.url || images?.['236x']?.url || null
+      if (url) return String(url)
+    }
+  } catch {
+    /* fallback زیر امتحان می‌شود */
+  }
+  try {
+    const res = await fetch(`https://www.pinterest.com/pin/${pinId}/`, {
+      headers: { 'User-Agent': BROWSER_UA },
+      signal: AbortSignal.timeout(6000)
+    })
+    if (res.ok) return extractOgImage(await res.text())
+  } catch {
+    /* بدون پوستر */
+  }
+  return null
+}
+
+async function fetchOgImage(pageUrl: string): Promise<string | null> {
+  try {
+    const res = await fetch(pageUrl, {
+      headers: { 'User-Agent': BROWSER_UA },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(6000)
+    })
+    if (!res.ok) return null
+    return extractOgImage(await res.text())
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -50,11 +103,13 @@ async function resolveLink(raw: string): Promise<LinkPreview> {
   // ── Pinterest ──────────────────────────────────────────────
   if (host === 'pin.it' || host.endsWith('pinimg.com') || host.includes('pinterest.')) {
     const pinId = finalUrl.pathname.match(/\/pin\/(\d+)/)?.[1] ?? null
+    const thumbnail = pinId ? await fetchPinterestPoster(pinId) : null
     return {
       platform: 'Pinterest',
       embedUrl: pinId ? `https://assets.pinterest.com/ext/embed.html?id=${pinId}` : null,
       videoUrl: null,
-      watchUrl: pinId ? `https://www.pinterest.com/pin/${pinId}/` : finalUrl.toString()
+      watchUrl: pinId ? `https://www.pinterest.com/pin/${pinId}/` : finalUrl.toString(),
+      thumbnail
     }
   }
 
@@ -64,22 +119,25 @@ async function resolveLink(raw: string): Promise<LinkPreview> {
     if (m) {
       const kind = m[1] === 'reels' ? 'reel' : m[1]
       const code = m[2]
+      const watchUrl = `https://www.instagram.com/${kind}/${code}/`
+      const thumbnail = await fetchOgImage(watchUrl)
       return {
         platform: 'Instagram',
         embedUrl: `https://www.instagram.com/${kind}/${code}/embed/`,
         videoUrl: null,
-        watchUrl: `https://www.instagram.com/${kind}/${code}/`
+        watchUrl,
+        thumbnail
       }
     }
-    return { platform: 'Instagram', embedUrl: null, videoUrl: null, watchUrl: finalUrl.toString() }
+    return { platform: 'Instagram', embedUrl: null, videoUrl: null, watchUrl: finalUrl.toString(), thumbnail: null }
   }
 
   // ── لینک مستقیم فایل ویدیو ────────────────────────────────
   if (/\.(mp4|webm|m4v|mov)(\?.*)?$/i.test(finalUrl.pathname + finalUrl.search)) {
-    return { platform: 'Video', embedUrl: null, videoUrl: finalUrl.toString(), watchUrl: null }
+    return { platform: 'Video', embedUrl: null, videoUrl: finalUrl.toString(), watchUrl: null, thumbnail: null }
   }
 
-  return { platform: null, embedUrl: null, videoUrl: null, watchUrl: finalUrl.toString() }
+  return { platform: null, embedUrl: null, videoUrl: null, watchUrl: finalUrl.toString(), thumbnail: null }
 }
 
 export async function GET(request: Request) {

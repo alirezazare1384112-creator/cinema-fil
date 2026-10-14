@@ -71,7 +71,9 @@ export default function EditsPage() {
   /** تازه باز شدن مودال — کلیک دومِ دابل‌کلیک نباید بیرون مودال را ببندد */
   const playerIgnoreBackdropClick = useRef(false)
   /** پیش‌نمایش زندهٔ لینک در فرم افزودن */
-  const [linkPreview, setLinkPreview] = useState<{ platform: string; embedUrl: string | null; videoUrl: string | null } | null>(null)
+  const [linkPreview, setLinkPreview] = useState<{ platform: string; embedUrl: string | null; videoUrl: string | null; thumbnail?: string | null } | null>(null)
+  /** آخرین کاوری که خودکار از لینک پر شده — برای تمایز از کاور دستی کاربر */
+  const autoThumbRef = useRef('')
 
   // بستن مودال با Esc و قفل اسکرول صفحه هنگام باز بودن
   useEffect(() => {
@@ -100,6 +102,15 @@ export default function EditsPage() {
         const res = await fetch(`/api/link-preview?url=${encodeURIComponent(url)}`)
         const data = await res.json()
         setLinkPreview(data.embedUrl || data.videoUrl ? data : null)
+        if (data.thumbnail) {
+          setNewEdit((prev) => {
+            if (!prev.thumbnailUrl.trim() || prev.thumbnailUrl === autoThumbRef.current) {
+              autoThumbRef.current = data.thumbnail
+              return { ...prev, thumbnailUrl: data.thumbnail }
+            }
+            return prev
+          })
+        }
       } catch {
         setLinkPreview(null)
       }
@@ -230,6 +241,7 @@ export default function EditsPage() {
         return
       }
       await fetchFolders()
+      autoThumbRef.current = ''
       setNewEdit({ title: '', description: '', videoUrl: '', thumbnailUrl: '', tags: [], audioInfo: '' })
       setCurrentFolder({ ...folder, editCount: 0 })
       toast('پوشه ساخته شد', 'success')
@@ -269,6 +281,7 @@ export default function EditsPage() {
   }
 
   const resetNewEdit = () => {
+    autoThumbRef.current = ''
     setNewEdit({ title: '', description: '', videoUrl: '', thumbnailUrl: '', tags: [], audioInfo: '' })
     setVideoFileName('')
   }
@@ -663,6 +676,20 @@ export default function EditsPage() {
                           این ویدیو بعد از افزودن، همین‌جا داخل برنامه پخش می‌شود؛
                           لازم نیست به پینترست یا اینستاگرام بروید.
                         </p>
+                        {linkPreview.thumbnail && (
+                          <div className="flex items-center gap-2 mt-2">
+                            <img
+                              src={linkPreview.thumbnail}
+                              alt="پوستر خودکار"
+                              className="w-14 h-20 object-cover rounded-lg border border-white/10 shrink-0"
+                            />
+                            <p className="text-[11px] text-green-300/90 leading-4">
+                              پوستر به‌صورت خودکار پیدا شد
+                              <br />
+                              و روی کارت ذخیره می‌شود.
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -679,7 +706,7 @@ export default function EditsPage() {
                       type="text"
                       value={newEdit.thumbnailUrl}
                       onChange={(e) => setNewEdit({ ...newEdit, thumbnailUrl: e.target.value })}
-                      placeholder="لینک کاور/تصویر شاخص (اختیاری)"
+                      placeholder="کاور/تصویر شاخص (برای پینترست و اینستاگرام خودکار پیدا می‌شود)"
                       className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500 mt-2"
                     />
                   )}

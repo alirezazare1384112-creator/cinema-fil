@@ -2,11 +2,85 @@ import { NextRequest, NextResponse } from 'next/server'
 import fs from 'fs'
 import path from 'path'
 import crypto from 'crypto'
+import https from 'https'
+import type { LookupFunction } from 'net'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const MAX_BYTES = 25 * 1024 * 1024
+
+const BROWSER_UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
+
+/** DNS-over-HTTPS از طریق IP رمز-شکننده نیست و آدرس واقعی برمی‌گرداند (شبکه‌هایی که DNS دامنه‌ها را مسموم می‌کنند). */
+async function dohResolveA(hostname: string): Promise<string | null> {
+  try {
+    const res = await fetch(`https://1.1.1.1/dns-query?name=${encodeURIComponent(hostname)}&type=A`, {
+      headers: { accept: 'application/dns-json' },
+      signal: AbortSignal.timeout(5000)
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    const ips = ((data?.Answer ?? []) as Array<{ type?: number; data?: string }>)
+      .filter((a) => a.type === 1 && a.data)
+      .map((a) => a.data as string)
+    return ips[0] ?? null
+  } catch {
+    return null
+  }
+}
+
+/** دریافت با https.get و IP اختیاری (برای دور زدن DNS مسموم)؛ ریدایرکت‌ها هم دوباره DoH می‌شوند. */
+function httpsGetBuffer(url: string, ip: string, headers: Record<string, string>, redirects = 3): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const options: https.RequestOptions = { headers, timeout: 15000 }
+    // در Node با autoSelectFamily، lookup با all=true و آرایه صدا می‌شود — هر دو حالت را پاسخ می‌دهیم
+    options.lookup = ((_h: string, opts: unknown, cb: (err: NodeJS.ErrnoException | null, address: unknown, family?: number) => void) => {
+      if ((opts as { all?: boolean })?.all) cb(null, [{ address: ip, family: 4 }])
+      else cb(null, ip, 4)
+    }) as unknown as LookupFunction
+    const req = https.get(url, options, (res) => {
+      const status = res.statusCode ?? 0
+      if (status >= 300 && status < 400 && res.headers.location) {
+        res.resume()
+        if (redirects <= 0) return reject(new Error('too many redirects'))
+        const next = new URL(res.headers.location, url)
+        dohResolveA(next.hostname)
+          .then((nextIp) => (nextIp ? httpsGetBuffer(next.toString(), nextIp, headers, redirects - 1) : Promise.reject(new Error('DoH failed'))))
+          .then(resolve, reject)
+        return
+      }
+      if (status !== 200) {
+        res.resume()
+        return reject(new Error(`HTTP ${status}`))
+      }
+      const chunks: Buffer[] = []
+      res.on('data', (c: Buffer) => chunks.push(c))
+      res.on('end', () => resolve(Buffer.concat(chunks)))
+      res.on('error', reject)
+    })
+    req.on('error', reject)
+    req.on('timeout', () => req.destroy(new Error('timeout')))
+  })
+}
+
+/** fetch معمولی؛ اگر شکست (شبکه/DNS مسموم) با DoH + IP واقعی تلاش می‌شود. */
+async function downloadImageBuffer(raw: string): Promise<Buffer> {
+  try {
+    const res = await fetch(raw, {
+      signal: AbortSignal.timeout(15000),
+      redirect: 'follow',
+      headers: { 'User-Agent': BROWSER_UA }
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    return Buffer.from(await res.arrayBuffer())
+  } catch {
+    const ip = await dohResolveA(new URL(raw).hostname)
+    if (!ip) throw new Error('دریافت تصویر ناموفق بود')
+    return httpsGetBuffer(raw, ip, { 'User-Agent': BROWSER_UA })
+  }
+}
 
 function sniffImage(buf: Buffer): string | null {
   if (buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return '.jpg'
@@ -23,16 +97,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'آدرس تصویر نامعتبر است' }, { status: 400 })
   }
 
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), 15000)
-
   try {
-    const res = await fetch(raw, { signal: controller.signal, redirect: 'follow' })
-    if (!res.ok) {
-      return NextResponse.json({ error: 'تصویر از مبدأ دریافت نشد' }, { status: 502 })
-    }
-    const buf = Buffer.from(await res.arrayBuffer())
-    clearTimeout(timer)
+    const buf = await downloadImageBuffer(raw)
 
     if (buf.length === 0) {
       return NextResponse.json({ error: 'تصویر خالی است' }, { status: 400 })
@@ -53,7 +119,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ url: `/api/uploads/${name}` })
   } catch (error) {
-    clearTimeout(timer)
     console.error('save-image error:', error)
     return NextResponse.json({ error: 'دریافت تصویر ناموفق بود (اینترنت/مبدأ در دسترس نیست)' }, { status: 502 })
   }
