@@ -68,6 +68,8 @@ export default function EditsPage() {
   })
   /** مودال پخش داخلی (پینترست/اینستاگرام/ویدیوی مستقیم) */
   const [player, setPlayer] = useState<InlinePlayer | null>(null)
+  /** تازه باز شدن مودال — کلیک دومِ دابل‌کلیک نباید بیرون مودال را ببندد */
+  const playerIgnoreBackdropClick = useRef(false)
   /** پیش‌نمایش زندهٔ لینک در فرم افزودن */
   const [linkPreview, setLinkPreview] = useState<{ platform: string; embedUrl: string | null; videoUrl: string | null } | null>(null)
 
@@ -348,6 +350,8 @@ export default function EditsPage() {
       const res = await fetch(`/api/link-preview?url=${encodeURIComponent(url)}`)
       const data = await res.json()
       if (res.ok && (data.embedUrl || data.videoUrl)) {
+        playerIgnoreBackdropClick.current = true
+        window.setTimeout(() => { playerIgnoreBackdropClick.current = false }, 450)
         setPlayer({
           title: edit.title,
           platform: data.platform,
@@ -1005,7 +1009,10 @@ export default function EditsPage() {
       {player && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in"
-          onClick={() => setPlayer(null)}
+          onClick={() => {
+            // کلیک دومِ دابل‌کلیک روی کارت نباید مودالِ تازه‌بازشده را ببندد
+            if (!playerIgnoreBackdropClick.current) setPlayer(null)
+          }}
         >
           <div className="relative w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <button
