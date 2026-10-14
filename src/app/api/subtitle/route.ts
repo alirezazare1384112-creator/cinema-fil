@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     const raw = fs.readFileSync(filePath, 'utf-8')
 
     let body: string
-    let contentType = 'text/vtt; charset=utf-8'
+    const contentType = 'text/vtt; charset=utf-8'
     if (ext === '.vtt') {
       body = raw
     } else {

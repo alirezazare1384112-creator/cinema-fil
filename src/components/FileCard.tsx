@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Play, HardDrive, Film, MoreVertical, Trash2, Link, Unlink, Folder, ImagePlus, History, Subtitles, Clapperboard, Edit, Check, X } from 'lucide-react'
 import type { LocalFile } from '@/types'
 import { getPosterURL } from '@/lib/tmdb'

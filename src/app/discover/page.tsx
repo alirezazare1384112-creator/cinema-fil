@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Sparkles, TrendingUp, Film, Tv, ArrowUpDown, CalendarDays, Star, Layers } from 'lucide-react'
+import { Sparkles, TrendingUp, Film, Tv, ArrowUpDown, CalendarDays, Layers } from 'lucide-react'
 import SearchBar from '@/components/SearchBar'
 import MediaPreviewModal from '@/components/MediaPreviewModal'
 import RatingsBadge from '@/components/RatingsBadge'

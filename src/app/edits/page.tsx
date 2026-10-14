@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, type ChangeEvent } from 'react'
-import { Scissors, Plus, Tag, Play, Trash2, Edit, Film, Upload, Loader2, Check, ArrowRight, Folder, FolderOpen, ImagePlus, Link as LinkIcon, X, ExternalLink, Pin, Camera, Clapperboard } from 'lucide-react'
+import { Scissors, Plus, Tag, Play, Trash2, Film, Upload, Loader2, Check, ArrowRight, Folder, FolderOpen, ImagePlus, Link as LinkIcon, X, ExternalLink, Pin, Camera, Clapperboard } from 'lucide-react'
 import type { MediaEdit, EditFolder } from '@/types'
 import { useToast } from '@/components/Toast'
 import { extractPoster } from '@/lib/videoPoster'
@@ -120,16 +120,7 @@ export default function EditsPage() {
 
   const availableTags = ['سینمایی', 'زیبا', 'هایپ', 'احساسی', 'حماسی', 'AMV', 'ویرایش', 'فن‌آرت']
 
-  useEffect(() => {
-    fetchFolders()
-  }, [])
-
-  useEffect(() => {
-    if (currentFolder) {
-      fetchEditsByFolder(currentFolder.id)
-    }
-  }, [currentFolder])
-
+  // تعریف تابع‌ها قبل از useEffectها — برای جلوگیری از TDZ
   const fetchFolders = async () => {
     try {
       const response = await fetch('/api/edits/folders')
@@ -149,6 +140,17 @@ export default function EditsPage() {
       console.error('Error fetching edits:', error)
     }
   }
+
+  useEffect(() => {
+    void fetchFolders()
+  }, [])
+
+  useEffect(() => {
+    if (currentFolder) {
+      void fetchEditsByFolder(currentFolder.id)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentFolder])
 
   const getFilteredEdits = () => {
     if (activeTag === 'all') {

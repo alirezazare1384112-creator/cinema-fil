@@ -18,11 +18,7 @@ export default function HomePage() {
     currentlyWatching: 0
   })
 
-  useEffect(() => {
-    fetchMedia()
-    fetchTrending()
-  }, [])
-
+  // تعریف fetchMedia و fetchTrending قبل از useEffect — برای جلوگیری از TDZ
   const fetchMedia = async () => {
     try {
       const data = (await sharedJson<Media[]>('/api/media')) || []
@@ -56,6 +52,12 @@ export default function HomePage() {
       console.error('Error fetching trending:', error)
     }
   }
+
+  useEffect(() => {
+    void fetchMedia()
+    void fetchTrending()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const getTitle = (item: TMDBMovie | TMDBTVShow) => {
     return 'title' in item ? item.title : item.name

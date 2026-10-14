@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
-import { Quote, Plus, Film, Trash2, Dice5, Upload, LinkIcon, X, Loader2, Copy, Check } from 'lucide-react'
+import { Quote, Plus, Film, Dice5, Upload, LinkIcon, X, Loader2, Copy, Check } from 'lucide-react'
 import QuoteCard from '@/components/QuoteCard'
 import { getBackdropURL } from '@/lib/tmdb'
 import { sharedJson } from '@/lib/api-cache'
@@ -30,11 +30,7 @@ export default function QuotesPage() {
     gifUrl: ''
   })
 
-  useEffect(() => {
-    fetchQuotes()
-    fetchMedia()
-  }, [])
-
+  // تعریف fetchQuotes و fetchMedia قبل از useEffect — برای جلوگیری از TDZ
   const fetchQuotes = useCallback(async () => {
     try {
       const response = await fetch('/api/quotes')
@@ -52,6 +48,12 @@ export default function QuotesPage() {
     } catch (error) {
       console.error('Error fetching media:', error)
     }
+  }, [])
+
+  useEffect(() => {
+    void fetchQuotes()
+    void fetchMedia()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleAddQuote = async () => {

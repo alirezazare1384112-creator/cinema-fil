@@ -1,7 +1,7 @@
 'use client'
 
 import { memo, useState, useRef } from 'react'
-import { Star, Eye, Clock, Play, MoreVertical, Trash2, Edit } from 'lucide-react'
+import { Star, Eye, Clock, Play, MoreVertical, Trash2 } from 'lucide-react'
 import { getPosterURL } from '@/lib/tmdb'
 import RatingsBadge from '@/components/RatingsBadge'
 import type { Media } from '@/types'
