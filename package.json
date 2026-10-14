@@ -2,6 +2,26 @@
   "name": "cinephile-vault",
   "version": "0.1.0",
   "private": true,
+  "description": "Personal movie/TV tracker with local media library, fan-edit gallery, and quotes collector — runs fully on your own computer.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/alirezazare1384112-creator/cinema-fil.git"
+  },
+  "homepage": "https://github.com/alirezazare1384112-creator/cinema-fil#readme",
+  "bugs": {
+    "url": "https://github.com/alirezazare1384112-creator/cinema-fil/issues"
+  },
+  "keywords": [
+    "movie",
+    "tv",
+    "tmdb",
+    "media-library",
+    "personal-media",
+    "nextjs",
+    "prisma",
+    "sqlite"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",

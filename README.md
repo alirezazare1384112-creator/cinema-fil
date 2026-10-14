@@ -1,221 +1,104 @@
-# Cinephile Vault & Media Hub
+# Cinephile Vault 🎬
 
-A personal movie and TV show tracking application with local media management, fan content gallery, and quotes collector.
+[![CI](https://github.com/alirezazare1384112-creator/cinema-fil/actions/workflows/ci.yml/badge.svg)](https://github.com/alirezazare1384112-creator/cinema-fil/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+A **personal movie & TV hub** that runs **entirely on your own computer**: track what you watch, manage your downloaded files, collect fan edits and quotes. Your data never leaves your machine.
+
+> برنامهٔ شخصی فیلم و سریال که **کاملاً روی کامپیوتر خودتان** اجرا می‌شود؛ داده‌هایتان هرگز به بیرون فرستاده نمی‌شود.
 
 ## Features
 
-- **Movie & Series Tracker**: Search movies/shows via TMDB API, track watch status, add ratings and reviews
-- **Local Files Hub**: Manage downloaded media files with path tracking and video specs
-- **Edits & Fan-Art Lounge**: Store video edits, clips, and fan art with tags and audio info
-- **Quotes Collector**: Save memorable dialogue with backdrop images and GIFs
-- **Cinematic UI**: Dark, immersive design with glassmorphism effects and neon accents
+- **Discover & Library** — Search movies/shows via [TMDB](https://www.themoviedb.org/), track watch status, ratings & notes
+- **Local Files Hub** — Index downloaded videos with specs (resolution, size, format) and play them with one click
+- **Edits Gallery** — Fan edits & clips with tags; add them from local files **or Pinterest/Instagram/web links**
+- **Quotes Collector** — Memorable dialogue with backdrop images
+- **Cinematic UI** — Dark, glassmorphism design
 
-## Tech Stack
+## Quick Start (Windows)
 
-- Next.js 16 (App Router)
-- TypeScript
-- Tailwind CSS
-- Prisma ORM
-- SQLite Database
-- Lucide React Icons
+**پیش‌نیاز:** [Node.js 20+](https://nodejs.org)
 
-## Setup Instructions
-
-### 1. Install Dependencies
-
-```bash
-cd cinephile-vault
-npm install
+```bat
+git clone https://github.com/alirezazare1384112-creator/cinema-fil.git
+cd cinema-fil
+setup.bat
 ```
 
-### 2. Configure TMDB API Key
+`setup.bat` installs dependencies, creates the empty database, and starts the app — the browser opens automatically at **http://localhost:3000**.
 
-You need a TMDB API key to search and discover movies/TV shows:
+After the first install, just run **`start-cinephile.bat`** (auto-restarts the server if it stops).
 
-1. Visit [TMDB API Settings](https://www.themoviedb.org/settings/api)
-2. Create an account or sign in
-3. Request an API key (choose "Developer" option)
-4. Copy your API key
+> **macOS / Linux:** the web app runs (`npm install && npx prisma db push && npm run dev`), but Windows-only features (file-picker dialog, local player integration) won't work.
 
-**Option A: Environment Variable (Recommended)**
+## TMDB API Key (for search)
 
-Create or edit `.env` file in the project root:
+The app runs without a key; only **Discover/search** needs one:
 
-```env
-DATABASE_URL="file:./dev.db"
-NEXT_PUBLIC_TMDB_API_KEY=your_api_key_here
-```
+1. Get a free key at [themoviedb.org/settings/api](https://www.themoviedb.org/settings/api)
+2. Put it in `.env` (`NEXT_PUBLIC_TMDB_API_KEY=...`) — or paste it in the app's **Settings** page
 
-**Option B: Settings Page**
-
-You can also add your API key through the Settings page in the app.
-
-### 3. Initialize Database
-
-The database is created automatically on install/postinstall. To create or update it manually:
-
-```bash
-npx prisma db push
-```
-
-### 4. Start Development Server
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Optional `.env` settings: `CINEPHILE_PLAYER` (custom player path), `F2M_BASE` (subtitle service override). See [`.env.example`](.env.example).
 
 ## Project Structure
 
 ```
 cinephile-vault/
-├── prisma/
-│   ├── schema.prisma        # Database schema
-│   └── dev.db               # SQLite database
+├── setup.bat               # One-click install + first run (Windows)
+├── start-cinephile.bat     # Daily launcher with auto-restart
+├── prisma/schema.prisma    # Database schema (SQLite → dev.db at project root)
 ├── src/
-│   ├── app/
-│   │   ├── api/             # API routes
-│   │   │   ├── media/       # Media CRUD
-│   │   │   ├── local-files/ # Local files CRUD
-│   │   │   ├── edits/       # Edits CRUD
-│   │   │   ├── quotes/      # Quotes CRUD
-│   │   │   └── tmdb/        # TMDB API proxy
-│   │   ├── discover/        # Search & discover page
-│   │   ├── library/         # My library page
-│   │   ├── local-files/     # Local files hub
-│   │   ├── edits/           # Edits gallery
-│   │   ├── quotes/          # Quotes collector
-│   │   └── settings/        # App settings
-│   ├── components/          # Reusable UI components
-│   └── lib/                 # Utilities (Prisma, TMDB)
-└── public/                  # Static assets
+│   ├── app/                # Pages + API routes (App Router)
+│   ├── components/         # UI components
+│   └── lib/                # Prisma client, TMDB, utilities
+└── public/                 # Static assets
 ```
 
-## Database Schema
+## Data & Privacy
 
-- **Media**: Movies and TV shows from TMDB with user data
-- **LocalFile**: Downloaded media files with specs and paths
-- **MediaEdit**: Video edits, clips, and fan content
-- **Quote**: Memorable dialogue and scenes
+- Database (`dev.db`), uploads (`uploads/`), and `.env` are **gitignored** — a fresh clone always starts with an empty database
+- Poster images and TMDB search are the only network traffic; everything else is local
+- To move your data to another machine, copy `dev.db` (and `uploads/` if you use it)
 
-## API Endpoints
+## For Developers
 
-- `GET/POST/PUT/DELETE /api/media` - Manage media entries
-- `GET/POST/PUT/DELETE /api/local-files` - Manage local files
-- `GET/POST/PUT/DELETE /api/edits` - Manage edits
-- `GET/POST/PUT/DELETE /api/quotes` - Manage quotes
-- `GET /api/tmdb?action=search&query=...` - Search TMDB
-- `GET /api/tmdb?action=trending` - Get trending content
+```bash
+npm install          # also runs `prisma generate`
+npx prisma db push   # create/update SQLite database
+npm run dev          # http://localhost:3000
+npm run build        # production build (CI runs this on every push)
+```
+
+## Deploy
+
+- **VPS / سرور شخصی:** `npm ci && npx prisma db push && npm run build && npm start` (keep it alive with `pm2 start npm --name cinephile -- start`)
+- **Vercel:** works for demo purposes, but SQLite storage is ephemeral there — use a server/VPS for real data
 
 ## License
 
-MIT
+[MIT](LICENSE)
 
 ---
 
-## دیپلوی روی گیت‌هاب (فارسی)
+## نصب برای کاربران (فارسی)
 
-### ۰) چه چیزهایی آپلود نمی‌شوند (مهم)
+این برنامه **کاملاً محلی** است: روی کامپیوتر خودتان اجرا می‌شود، دیتابیسش همان `dev.db` کنار برنامه است و **هیچ فیلم، ادیت یا دادهٔ شخصی داخل بسته نیست**.
 
-| چیز | در گیت‌هاب؟ | دلیل |
-|---|---|---|
-| `dev.db` (دیتابیس، تاریخچهٔ تماشا، یادداشت‌ها) | ❌ نه | در `.gitignore` است تا دادهٔ شخصی‌ات لو نرود |
-| `uploads/` (پوسترها و کلیپ‌های آپلودی) | ❌ نه | فایل‌های سنگینِ دادهٔ محلی |
-| `.env` و `.env.local` (کلید TMDB) | ❌ نه | راز است؛ فقط `.env.example` آپلود می‌شود |
-| `node_modules`، `.next`، کش‌ها | ❌ نه | بازسازی‌پذیرند |
+### نصب سه‌قدمی
 
-> نتیجه: نسخهٔ مستقر **یک دیتابیس خالی** می‌سازد. داده‌های خودت را با کپی کردن `dev.db` می‌بری (بخش ۴).
+1. [Node.js نسخه ۲۰ یا بالاتر](https://nodejs.org) را نصب کن (یک‌بار برای همیشه)
+2. ریپو را دانلود کن: `Code` → `Download ZIP` (یا `git clone`)
+3. داخل پوشه، روی **`setup.bat`** دوبار کلیک کن — خودش نصب می‌کند، دیتابیس خالی می‌سازد و برنامه را بالا می‌آورد
 
-### ۱) آپلود کد روی گیت‌هاب
+> دفعات بعد کافی است **`start-cinephile.bat`** را اجرا کنی.
 
-```bash
-# اول یک ریپوی خالی در github.com بسازید (پیشنهاد: Private)
-git remote add origin https://github.com/USER/REPO.git
-git branch -M main
-git push -u origin main
-```
-
-### ۲) ساخت خودکار (GitHub Actions)
-
-فایل `.github/workflows/ci.yml` بعد از هر push، پروژه را روی یک محیط تمیز بیلد می‌کند.
-سبز بودن آن یعنی همان کد روی سرور دیپلوی هم بدون خطا بالا می‌آید.
-
-برای اینکه بیلد کلید TMDB را داشته باشد: در صفحهٔ ریپو → `Settings` → `Secrets and variables` → `Actions` → `New repository secret` و نام `NEXT_PUBLIC_TMDB_API_KEY`.
-
-### ۳) دیپلوی — دو روش
-
-**الف) Vercel (سریع‌ترین — برای نمایش/تست)**
-
-1. [vercel.com](https://vercel.com) → `Add New…` → `Project` → Import از گیت‌هاب
-2. در قسمت `Environment Variables` متغیر `NEXT_PUBLIC_TMDB_API_KEY` را وارد کنید
-3. `Deploy`
-
-> ⚠️ نکتهٔ صادقانه: روی Vercel دیتابیس SQLite دائمی نیست و با هر دیپلویِ جدید ریست می‌شود. برای نمایش‌دادنِ پروژه خوب است؛ برای نگه‌داشتن داده‌های واقعی نه.
-
-**ب) سرور شخصی / VPS (توصیه‌شده برای دادهٔ واقعی)**
-
-```bash
-git clone https://github.com/USER/REPO.git cinephile-vault
-cd cinephile-vault
-npm ci                 # وابستگی‌ها + ساخت کلاینت Prisma (postinstall)
-npx prisma db push     # ساخت دیتابیس SQLite
-npm run build          # بیلد تولید
-npm start              # اجرا روی پورت 3000
-```
-
-برای اینکه بعد از خروج از SSH هم بماند:
-
-```bash
-npm install -g pm2
-pm2 start npm --name cinephile -- start
-pm2 save
-```
-
-### ۴) انتقال داده‌های خودت به سرور
-
-فایل `dev.db` را از کامپیوتر خودت روی سرور کپی کنید (جایگزینِ فایل خالی) و بعد:
-
-```bash
-npx prisma db push
-```
-
-پوشهٔ `uploads/` را هم اگر پوستر/کلیپ آپلودشده می‌خواهی، همین‌طور کپی کن.
-
----
-
-## نصب برای کاربران (نسخهٔ عمومی)
-
-این برنامه **کاملاً محلی** است: روی کامپیوتر خود کاربر اجرا می‌شود، دیتابیسش همان `dev.db` کنار برنامه است و **هیچ فیلم، ادیت یا دادهٔ شخصی داخل بسته نیست** (دیتابیس، `uploads/` و کش‌ها همه در `.gitignore` هستند و در بیلد/بسته قرار نمی‌گیرند).
-
-### روش ۱) دانلود بستهٔ نصب (ساده‌ترین)
-
-1. به بخش **Releases** همین ریپو بروید و آخرین فایل `cinephile-vault-vX.Y.Z.zip` را دانلود کنید
-2. از حافظه دربیاورید (روی فایل راست‌کلیک → Extract All)
-3. `setup.bat` را اجرا کنید — خودش نصب می‌کند، دیتابیس خالی می‌سازد و برنامه را بالا می‌آورد
-4. مرورگر باز می‌شود؛ برنامه از آن لحظه مالِ شماست
-
-> برای اجرای دفعات بعد کافی است `start-cinephile.bat` را اجرا کنید.
-
-**پیش‌نیاز:** [Node.js نسخه ۲۰ یا بالاتر](https://nodejs.org)
-
-### روش ۲) از روی کد (برای توسعه‌دهندگان)
-
-```bash
-git clone https://github.com/USER/REPO.git
-cd cinephile-vault
-npm install
-npx prisma db push
-npm run dev
-```
-
-### بعد از نصب: وصل کردن فایل‌های خودِ کاربر
+### بعد از نصب: وصل کردن فایل‌های خودت
 
 | می‌خواهی چه چیزی را وصل کنی؟ | کجا؟ |
 |---|---|
-| ویدیوهای دانلودشده روی هارد/فلش | بخش **«فایل‌های محلی»** → افزودن فایل یا اتصال پوشه |
-| پوشهٔ ادیت‌ها و کلیپ‌ها | بخش **«گالری ویرایش‌ها»** → اتصال پوشه / آپلود فایل |
-| فیلم/سریال برای ردیابی تماشا | بخش **«کشف»** → جستجو و افزودن به کتابخانه |
+| ویدیوهای دانلودشده روی هارد/فلش | **«فایل‌های محلی»** → افزودن فایل یا اتصال پوشه |
+| پوشهٔ ادیت‌ها و کلیپ‌ها | **«گالری ویرایش‌ها»** → اتصال پوشه / آپلود فایل / **لینک پینترست و اینستاگرام** |
+| فیلم/سریال برای ردیابی تماشا | **«کشف»** → جستجو (نیازمند کلید TMDB در تنظیمات) |
 | زیرنویس | کنار فایل همان ویدیو، از دکمهٔ انتخاب زیرنویس |
 
 مسیرها و داده‌ها فقط در دیتابیس **همان کامپیوتر** می‌مانند؛ چیزی به بیرون فرستاده نمی‌شود (برای جستجو و پوستر به اینترنت نیاز هست، بقیه‌اش محلی است).

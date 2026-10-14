@@ -22,12 +22,17 @@ if errorlevel 1 (
     exit /b 1
 )
 
-set NPM=npm
 where npm >nul 2>nul
-if errorlevel 1 if exist "D:\npm.cmd" set NPM=D:\npm.cmd
+if errorlevel 1 (
+    echo  [خطا] npm پيدا نشد. مطمئن شو Node.js درست نصب شده،
+    echo  سپس دوباره همين فايل را اجرا کن.
+    echo.
+    pause
+    exit /b 1
+)
 
 echo  [1/4] در حال نصب کتابخانه ها (يک تا چند دقيقه)...
-call "%NPM%" install
+call npm install
 if errorlevel 1 (
     echo  [خطا] نصب کتابخانه ها ناموفق بود. اينترنت را چک کن و دوباره اجرا کن.
     pause

@@ -1,21 +1,41 @@
 @echo off
 chcp 65001 >nul
 cd /d "%~dp0"
-if not exist node_modules (
-    echo Installing dependencies, please wait...
-    call "D:\npm.cmd" install
+
+where npm >nul 2>nul
+if errorlevel 1 (
+    echo  [خطا] Node.js / npm پیدا نشد.
+    echo  از https://nodejs.org نسخه 20 یا بالاتر را نصب کن،
+    echo  سپس دوباره همین فایل را اجرا کن.
+    echo.
+    pause
+    exit /b 1
 )
-title Cinephile Vault - Dev Server
+
+if not exist node_modules (
+    echo  در حال نصب کتابخانه‌ها (یک تا چند دقیقه)...
+    call npm install
+    if errorlevel 1 (
+        echo  [خطا] نصب کتابخانه‌ها ناموفق بود. اینترنت را چک کن و دوباره اجرا کن.
+        pause
+        exit /b 1
+    )
+)
+
+title Cinephile Vault
 echo ============================================================
 echo  سینمافیل دارد بالا می‌آید...
+echo  آدرس: http://localhost:3000
 echo  اگر سرور به هر دلیلی متوقف شد، خودش دوباره بالا می‌آید.
 echo  برای خاموش کردن کامل، این پنجره را ببندید (X).
 echo ============================================================
-start "" /B cmd /c "timeout /t 10 /nobreak >nul && start "" "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" "http://localhost:3000""
+
+rem باز شدن مرورگر پیش‌فرض کاربر پس از آماده شدن سرور
+start "" /B cmd /c "timeout /t 10 /nobreak >nul && start "" http://localhost:3000"
 
 :loop
-call "D:\npm.cmd" run dev
+call npm run dev
 echo.
-echo [سينمافيل] سرور متوقف شد - 3 ثانيه ديگر دوباره بالا مي آيد...
+echo [سینمافیل] سرور متوقف شد - 3 ثانیه دیگر دوباره بالا می‌آید...
 timeout /t 3 /nobreak >nul
 goto loop
