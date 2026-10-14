@@ -18,6 +18,8 @@ export interface ThemeDefinition {
   swatch: string[]
   icon: ComponentType<SVGProps<SVGSVGElement>>
   atmosphere: string
+  /** یک نقل‌قولِ نمادین از همان اثر — بالای سایدبار نشان داده می‌شود */
+  quote: { text: string; author?: string }
 }
 
 export const THEME_STORAGE_KEY = 'cinema_theme'
@@ -119,7 +121,8 @@ export const THEMES: ThemeDefinition[] = [
     description: 'بنفش و صورتی ملایم روی زمینهٔ تیره',
     swatch: ['#8b5cf6', '#ec4899'],
     icon: FilmReelIcon,
-    atmosphere: 'فضای سینماییِ آرام با نورِ بنفش-صورتی و حسِ سینمای خانگی'
+    atmosphere: 'فضای سینماییِ آرام با نورِ بنفش-صورتی و حسِ سینمای خانگی',
+    quote: { text: 'سینما حقیقت است؛ ۲۴ بار در ثانیه.', author: 'ژان-لوک گدار' }
   },
   {
     id: 'batman',
@@ -128,7 +131,8 @@ export const THEMES: ThemeDefinition[] = [
     description: 'آسمان شبِ گاتهام با لهجهٔ آبی فولادی',
     swatch: ['#3b82f6', '#94a3b8'],
     icon: BatIcon,
-    atmosphere: 'شبِ سنگینِ گاتهام، باران، سیاهِ عمیق با هالهٔ آبی فولادی و حسِ بلندمرتبه‌ایِ بروس وین'
+    atmosphere: 'شبِ سنگینِ گاتهام، باران، سیاهِ عمیق با هالهٔ آبی فولادی و حسِ بلندمرتبه‌ایِ بروس وین',
+    quote: { text: 'یا می‌میری قهرمان، یا اون‌قدر زنده می‌مونی که خودت تبدیل بشی به شریر.', author: 'هاروی دنت' }
   },
   {
     id: 'joker',
@@ -137,7 +141,8 @@ export const THEMES: ThemeDefinition[] = [
     description: 'سبز اسیدی روی بنفشِ دیوانه',
     swatch: ['#22c55e', '#a855f7'],
     icon: JokerIcon,
-    atmosphere: 'دیوانگیِ آرتور فلچر، رنگ‌های ناهنجار و حسِ هرج‌ومرجِ کمیک‌بوک'
+    atmosphere: 'دیوانگیِ آرتور فلچر، رنگ‌های ناهنجار و حسِ هرج‌ومرجِ کمیک‌بوک',
+    quote: { text: 'چرا این‌قدر جدی؟', author: 'جوکر' }
   },
   {
     id: 'spiderman',
@@ -146,7 +151,8 @@ export const THEMES: ThemeDefinition[] = [
     description: 'قرمز و آبیِ شب‌های نیویورک',
     swatch: ['#ef4444', '#3b82f6'],
     icon: SpiderIcon,
-    atmosphere: 'شبِ نیویورک با تارِ عنکبوت در گوشه‌ها، آسمان‌خراشِ مه‌آلود، قرمزِ جسور و آبیِ متعادل'
+    atmosphere: 'شبِ نیویورک با تارِ عنکبوت در گوشه‌ها، آسمان‌خراشِ مه‌آلود، قرمزِ جسور و آبیِ متعادل',
+    quote: { text: 'با قدرتِ بزرگ، مسئولیتِ بزرگی هم همراه است.', author: 'عمو بن' }
   },
   {
     id: 'matrix',
@@ -155,7 +161,8 @@ export const THEMES: ThemeDefinition[] = [
     description: 'سبز ترمینالیِ دنیای کد',
     swatch: ['#22c55e', '#0f766e'],
     icon: MatrixIcon,
-    atmosphere: 'ترمینالِ سبزِ ماتریکس با بارانِ کدِ در حال ریزش و خطوطِ اسکنِ صفحه'
+    atmosphere: 'ترمینالِ سبزِ ماتریکس با بارانِ کدِ در حال ریزش و خطوطِ اسکنِ صفحه',
+    quote: { text: 'قرمز یا آبی؟ متاسفانه هیچ‌کدوم رو نمی‌تونی بگی.', author: 'مورفئوس' }
   },
   {
     id: 'breakingbad',
@@ -164,7 +171,8 @@ export const THEMES: ThemeDefinition[] = [
     description: 'سبزِ آزمایشگاهی و زردِ هشدار',
     swatch: ['#65a30d', '#eab308'],
     icon: AtomIcon,
-    atmosphere: 'آزمایشگاهِ زیرزمینی، نمادِ اتمِ خطرناک، خطوطِ هشدارِ زرد-مشکی'
+    atmosphere: 'آزمایشگاهِ زیرزمینی، نمادِ اتمِ خطرناک، خطوطِ هشدارِ زرد-مشکی',
+    quote: { text: 'من کسی هستم که اون کسی می‌ترسه.', author: 'هیزنبرگ' }
   },
   {
     id: 'harrypotter',
@@ -173,7 +181,8 @@ export const THEMES: ThemeDefinition[] = [
     description: 'طلاییِ گریفیندور روی سرمه‌ای جادو',
     swatch: ['#d4af37', '#9f1239'],
     icon: LightningIcon,
-    atmosphere: 'قلعهٔ هاگوارتز در شب، ابرهای نقره‌ای، جادو و طلوعِ طلاییِ گریفیندور'
+    atmosphere: 'قلعهٔ هاگوارتز در شب، ابرهای نقره‌ای، جادو و طلوعِ طلاییِ گریفیندور',
+    quote: { text: 'برای جادوگرِ بااستعداد، هیچ تفاوتی نمی‌کنه کجا به‌دنیا بیاد.', author: 'آلبوس دامبلدور' }
   },
   {
     id: 'starwars',
@@ -182,7 +191,8 @@ export const THEMES: ThemeDefinition[] = [
     description: 'طلاییِ نورِ شمشیر روی مشکی فضا',
     swatch: ['#facc15', '#38bdf8'],
     icon: LightsaberIcon,
-    atmosphere: 'فضای عمیقِ پر از ستاره، هالهٔ نورِ شمشیر نوری، حسیِ حماسیِ کهکشانی'
+    atmosphere: 'فضای عمیقِ پر از ستاره، هالهٔ نورِ شمشیر نوری، حسیِ حماسیِ کهکشانی',
+    quote: { text: 'بکن یا نکن، تلاش راهی نیست.', author: 'یودا' }
   },
   {
     id: 'got',
@@ -191,7 +201,8 @@ export const THEMES: ThemeDefinition[] = [
     description: 'یخِ شمال و آتشِ اژدها',
     swatch: ['#7dd3fc', '#fb923c'],
     icon: DragonIcon,
-    atmosphere: 'زمستانِ آینده، یخِ شمال و آتشِ اژدها، حسیِ قرون‌وسطه‌ایِ سلطنتی'
+    atmosphere: 'زمستانِ آینده، یخِ شمال و آتشِ اژدها، حسیِ قرون‌وسطه‌ایِ سلطنتی',
+    quote: { text: 'زمستان میاد.', author: 'ند استارک' }
   }
 ]
 

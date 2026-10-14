@@ -12,7 +12,7 @@ import {
   Settings,
   Sparkles
 } from 'lucide-react'
-import { getStoredThemeId, getThemeIcon } from '@/lib/themes'
+import { getStoredThemeId, getThemeIcon, THEMES } from '@/lib/themes'
 
 const navItems = [
   { href: '/', label: 'خانه', icon: Home },
@@ -41,6 +41,8 @@ export default function Sidebar() {
   }, [])
 
   const ThemeIcon = getThemeIcon(themeId)
+  const currentTheme = THEMES.find((t) => t.id === themeId)
+  const themeQuote = currentTheme?.quote
 
   return (
     <aside className="fixed right-0 top-0 h-full w-64 bg-black/50 backdrop-blur-xl border-l border-white/10 z-50">
@@ -55,6 +57,14 @@ export default function Sidebar() {
             <p className="text-xs text-gray-400"> vault و رسانه</p>
           </div>
         </Link>
+
+        {/* نقل‌قول نمادینِ تمِ فعلی — کمی پایین‌تر از لوگو */}
+        {themeQuote && (
+          <div className="theme-quote" key={themeId}>
+            <span>“{themeQuote.text}”</span>
+            {themeQuote.author && <span className="author">— {themeQuote.author}</span>}
+          </div>
+        )}
       </div>
 
       <nav className="px-4 mt-4">

@@ -132,7 +132,6 @@ select option {
   border: 1px solid var(--glass-border);
   border-radius: var(--card-radius);
   position: relative;
-  overflow: hidden;
 }
 
 .glass-card:hover {
@@ -494,4 +493,321 @@ select option {
   --scrollbar-thumb: rgba(125, 211, 252, 0.4);
   --scrollbar-thumb-hover: rgba(125, 211, 252, 0.65);
   --selection-bg: rgba(125, 211, 252, 0.35);
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   PER-THEME MICRO-INTERACTIONS
+   Each theme now has its own personality on top of the color/pattern/font
+   work above: signature buttons, divider style, focus ring, link hover,
+   and card hover micro-interaction. These override base .glass-card and
+   button styles defined near the top of this file.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Common: themed focus ring for inputs/buttons */
+*:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Divider class — thin accent line between sections */
+.theme-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-glow) 50%, transparent);
+  margin: 1rem 0;
+}
+
+/* ─── Default: subtle cinematic dust particles on hover ─── */
+[data-theme='default'] .glass-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 40px -16px var(--accent-glow), 0 0 0 1px var(--glass-hover-border);
+}
+[data-theme='default'] button.bg-gradient-to-l:hover,
+[data-theme='default'] .bg-gradient-to-l:hover {
+  filter: brightness(1.1);
+}
+
+/* ─── Batman: dramatic gothic shadows + sharper angular corners ─── */
+[data-theme='batman'] .glass-card {
+  border-radius: 0.5rem;
+  /* sharper corners for gothic feel — but no clip-path so dropdowns still work */
+}
+[data-theme='batman'] .glass-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 50px -18px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(59, 130, 246, 0.6);
+  border-color: rgba(59, 130, 246, 0.55);
+}
+[data-theme='batman'] .glass-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.4;
+  z-index: 1;
+}
+[data-theme='batman'] h1, [data-theme='batman'] h2 {
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.7);
+}
+[data-theme='batman'] .theme-divider {
+  background: linear-gradient(90deg, transparent, var(--accent) 30%, var(--accent-2) 70%, transparent);
+  height: 2px;
+}
+
+/* ─── Joker: chaotic asymmetric jitter on hover ─── */
+[data-theme='joker'] .glass-card:hover {
+  animation: joker-jitter 0.6s ease-in-out;
+  border-color: rgba(34, 197, 94, 0.7);
+  box-shadow: 4px 4px 0 rgba(168, 85, 247, 0.4), -4px -4px 0 rgba(34, 197, 94, 0.3);
+}
+@keyframes joker-jitter {
+  0% { transform: translate(0, 0) rotate(0); }
+  20% { transform: translate(2px, -1px) rotate(0.4deg); }
+  40% { transform: translate(-1px, 2px) rotate(-0.4deg); }
+  60% { transform: translate(1px, 1px) rotate(0.3deg); }
+  80% { transform: translate(-2px, -1px) rotate(-0.3deg); }
+  100% { transform: translate(0, 0) rotate(0); }
+}
+[data-theme='joker'] h1, [data-theme='joker'] h2, [data-theme='joker'] .font-display {
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  text-shadow: 2px 2px 0 rgba(168, 85, 247, 0.4), -2px -2px 0 rgba(34, 197, 94, 0.4);
+}
+[data-theme='joker'] .theme-divider {
+  background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--accent), var(--accent-2));
+  background-size: 200% 100%;
+  height: 2px;
+  animation: joker-divider-slide 4s linear infinite;
+}
+@keyframes joker-divider-slide {
+  to { background-position: -200% 0; }
+}
+
+/* ─── Spider-Man: spidey-sense pulse + slight swing on cards ─── */
+[data-theme='spiderman'] .glass-card:hover {
+  transform: translateY(-4px) rotate(-0.5deg);
+  box-shadow: 0 18px 50px -16px rgba(239, 68, 68, 0.55), 0 0 0 1px rgba(239, 68, 68, 0.45);
+  animation: spidey-sense 1.4s ease-in-out infinite;
+}
+@keyframes spidey-sense {
+  0%, 100% { box-shadow: 0 18px 50px -16px rgba(239, 68, 68, 0.55), 0 0 0 1px rgba(239, 68, 68, 0.45); }
+  50%      { box-shadow: 0 18px 60px -10px rgba(239, 68, 68, 0.75), 0 0 0 2px rgba(239, 68, 68, 0.7); }
+}
+[data-theme='spiderman'] h1, [data-theme='spiderman'] h2 {
+  letter-spacing: 0.02em;
+  text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+}
+[data-theme='spiderman'] .theme-divider {
+  /* spider-web line: alternating dots and dashes */
+  background:
+    repeating-linear-gradient(90deg, var(--accent) 0 4px, transparent 4px 8px),
+    repeating-linear-gradient(90deg, transparent 0 4px, var(--accent-2) 4px 8px);
+  background-size: 100% 1px, 100% 1px;
+  background-position: 0 0, 0 0;
+  height: 2px;
+}
+
+/* ─── Matrix: glitch on hover + terminal cursor blink ─── */
+[data-theme='matrix'] .glass-card:hover {
+  border-color: rgba(34, 197, 94, 0.75);
+  animation: matrix-glitch 0.3s steps(2, end);
+}
+@keyframes matrix-glitch {
+  0%   { text-shadow: 1px 0 rgba(34, 197, 94, 0.6), -1px 0 rgba(20, 184, 166, 0.6); }
+  50%  { text-shadow: -1px 0 rgba(34, 197, 94, 0.6), 1px 0 rgba(20, 184, 166, 0.6); }
+  100% { text-shadow: 1px 0 rgba(34, 197, 94, 0.6), -1px 0 rgba(20, 184, 166, 0.6); }
+}
+[data-theme='matrix'] .glass-card {
+  font-family: 'Courier New', monospace;
+}
+[data-theme='matrix'] h1, [data-theme='matrix'] h2 {
+  font-family: 'Courier New', monospace;
+  letter-spacing: 0.05em;
+}
+/* Blinking cursor on the page title for Matrix */
+[data-theme='matrix'] h1::after {
+  content: '_';
+  display: inline-block;
+  margin-left: 4px;
+  animation: matrix-cursor 1s steps(2, end) infinite;
+  color: var(--accent);
+}
+@keyframes matrix-cursor {
+  50% { opacity: 0; }
+}
+[data-theme='matrix'] .theme-divider {
+  background: repeating-linear-gradient(90deg, var(--accent) 0 8px, transparent 8px 12px);
+  height: 1px;
+}
+
+/* ─── Breaking Bad: hazard-stripe corner accent + heavy block feel ─── */
+[data-theme='breakingbad'] .glass-card {
+  border-radius: 0.25rem;
+  border-width: 2px;
+}
+[data-theme='breakingbad'] .glass-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 24px;
+  height: 24px;
+  background:
+    repeating-linear-gradient(45deg, #eab308 0 6px, #000 6px 12px);
+  clip-path: polygon(100% 0, 0 0, 100% 100%);
+  opacity: 0.6;
+  z-index: 1;
+}
+[data-theme='breakingbad'] .glass-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(234, 171, 8, 0.7);
+  box-shadow: 0 8px 24px -10px rgba(234, 171, 8, 0.5);
+}
+[data-theme='breakingbad'] h1, [data-theme='breakingbad'] h2, [data-theme='breakingbad'] .font-display {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 900;
+}
+[data-theme='breakingbad'] .theme-divider {
+  background: repeating-linear-gradient(45deg, var(--accent-2) 0 8px, #000 8px 16px);
+  height: 8px;
+  border-radius: 0;
+}
+
+/* ─── Harry Potter: floating cards on hover + parchment feel ─── */
+[data-theme='harrypotter'] .glass-card {
+  border-radius: 0.5rem;
+}
+[data-theme='harrypotter'] .glass-card:hover {
+  animation: hp-float 2.5s ease-in-out infinite;
+  border-color: rgba(212, 175, 55, 0.55);
+  box-shadow: 0 20px 50px -16px rgba(212, 175, 55, 0.4), 0 0 12px rgba(212, 175, 55, 0.2);
+}
+@keyframes hp-float {
+  0%, 100% { transform: translateY(-3px); }
+  50%      { transform: translateY(-8px); }
+}
+[data-theme='harrypotter'] h1, [data-theme='harrypotter'] h2 {
+  font-family: 'Georgia', serif;
+  font-style: italic;
+  text-shadow: 0 2px 12px rgba(212, 175, 55, 0.35);
+}
+[data-theme='harrypotter'] .theme-divider {
+  background:
+    radial-gradient(circle at 25% 50%, var(--accent) 0 2px, transparent 2px 8px),
+    linear-gradient(90deg, transparent, var(--accent-glow) 50%, transparent);
+  height: 1px;
+}
+/* Sparkle decoration on hover for primary CTAs */
+[data-theme='harrypotter'] button:hover::after {
+  content: '✦';
+  position: absolute;
+  font-size: 8px;
+  color: var(--accent);
+  top: 4px;
+  right: 6px;
+  animation: hp-sparkle 1s ease-out;
+}
+@keyframes hp-sparkle {
+  0%   { opacity: 0; transform: translateY(0) scale(0.5); }
+  50%  { opacity: 1; transform: translateY(-4px) scale(1.2); }
+  100% { opacity: 0; transform: translateY(-8px) scale(0.5); }
+}
+
+/* ─── Star Wars: lightsaber-glow border on cards + hyperspace feel ─── */
+[data-theme='starwars'] .glass-card {
+  border-radius: 0.5rem;
+}
+[data-theme='starwars'] .glass-card:hover {
+  transform: translateY(-3px) scale(1.01);
+  border-color: rgba(250, 204, 21, 0.7);
+  box-shadow:
+    0 0 0 1px rgba(250, 204, 21, 0.5),
+    0 0 16px rgba(250, 204, 21, 0.35),
+    0 0 32px rgba(250, 204, 21, 0.15);
+}
+[data-theme='starwars'] h1, [data-theme='starwars'] h2, [data-theme='starwars'] .font-display {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  text-shadow: 0 0 12px rgba(250, 204, 21, 0.4);
+}
+[data-theme='starwars'] .theme-divider {
+  background: linear-gradient(90deg, transparent, var(--accent) 20%, #fff 50%, var(--accent) 80%, transparent);
+  height: 2px;
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+/* ─── Game of Thrones: medieval sword-style divider + sigil corner ─── */
+[data-theme='got'] .glass-card {
+  border-radius: 0.5rem;
+}
+[data-theme='got'] .glass-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(125, 211, 252, 0.6);
+  box-shadow: 0 12px 40px -16px rgba(125, 211, 252, 0.4), 0 0 0 1px rgba(251, 146, 60, 0.3);
+}
+[data-theme='got'] .glass-card::before {
+  /* house-sigil-like small diamond in the top-right corner */
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  transform: rotate(45deg);
+  opacity: 0.5;
+}
+[data-theme='got'] h1, [data-theme='got'] h2, [data-theme='got'] .font-display {
+  font-family: 'Georgia', serif;
+  font-style: italic;
+  letter-spacing: 0.04em;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
+}
+[data-theme='got'] .theme-divider {
+  /* sword-like double line: ice on top, fire on bottom */
+  background:
+    linear-gradient(90deg, transparent, var(--accent) 50%, transparent),
+    linear-gradient(90deg, transparent, var(--accent-2) 50%, transparent);
+  background-size: 100% 1px, 100% 1px;
+  background-position: 0 0, 0 3px;
+  background-repeat: no-repeat;
+  height: 4px;
+}
+
+/* ─── Sidebar theme accent — small quote ribbon below the logo ─── */
+.theme-quote {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-right: 2px solid var(--accent);
+  background: linear-gradient(90deg, var(--accent-glow) 0%, transparent 100%);
+  font-size: 0.7rem;
+  line-height: 1.4;
+  color: var(--accent-text-soft);
+  font-style: italic;
+  border-radius: 0 0.25rem 0.25rem 0;
+  opacity: 0.85;
+}
+.theme-quote .author {
+  display: block;
+  font-size: 0.6rem;
+  opacity: 0.7;
+  margin-top: 0.15rem;
+  font-style: normal;
+}
+[data-theme='joker'] .theme-quote,
+[data-theme='batman'] .theme-quote,
+[data-theme='matrix'] .theme-quote {
+  font-style: normal;
+}
+[data-theme='matrix'] .theme-quote {
+  font-family: 'Courier New', monospace;
+}
+[data-theme='batman'] .theme-quote {
+  border-right-color: var(--accent);
+  border-right-width: 3px;
 }
