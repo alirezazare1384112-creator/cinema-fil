@@ -81,7 +81,8 @@ const b64 = (s: string) => Buffer.from(s, 'utf8').toString('base64')
  * پسوند و پیشوند ۲۴ کاراکتری (برای عنوان‌های کوتاه‌شده).
  */
 function buildNeedles(target: string): string[] {
-  const base = path.basename(target)
+  // برای URL پارامترها/بخش‌ها را حذف می‌کنیم تا فقط نامِ فایل بماند
+  const base = path.basename(target.split('?')[0].split('#')[0])
   const stem = base.replace(/\.[^.]+$/, '')
   const out = new Set<string>()
   for (const s of [base, stem]) {
@@ -133,6 +134,8 @@ public class PlayWin {
   [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, StringBuilder s, int c);
   [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern int GetClassName(IntPtr h, StringBuilder s, int c);
   [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int c);
   [DllImport("user32.dll", CharSet = CharSet.Unicode)] public static extern bool PostMessage(IntPtr h, uint msg, IntPtr wp, IntPtr lp);
 }
 "@
@@ -220,9 +223,9 @@ if ($doVerify) {
     foreach ($t in (Get-Titles)) {
       $lt = $t.ToLower()
       if ($requireFile) {
-        foreach ($n in $needles) { if ($lt.Contains($n)) { $title = $t; $ok = $true; break } }
+        foreach ($n in $needles) { if ($lt.Contains($n)) { $title = $t; $ok = $true; if ([PlayWin]::IsIconic($h)) { [void][PlayWin]::ShowWindow($h, 9) } break } }
       } else {
-        foreach ($m in $markers) { if ($lt.Contains($m)) { $title = $t; $ok = $true; break } }
+        foreach ($m in $markers) { if ($lt.Contains($m)) { $title = $t; $ok = $true; if ([PlayWin]::IsIconic($h)) { [void][PlayWin]::ShowWindow($h, 9) } break } }
       }
       if ($ok) { break }
     }
@@ -464,7 +467,7 @@ const superseded = (): OpenOutcome => ({
 
 export async function POST(request: NextRequest) {
   try {
-    const { filePath, folderPath } = await request.json()
+    const { filePath, folderPath, stream } = await request.json()
 
     if (!filePath || typeof filePath !== 'string') {
       return NextResponse.json({ error: 'مسیر فایل نامعتبر است' }, { status: 400 })
@@ -487,6 +490,25 @@ export async function POST(request: NextRequest) {
 
       const target = filePath.startsWith('/') ? `http://localhost:3000${filePath}` : filePath
       console.log('Play URL:', target)
+
+      // پخش آنلاین در پلیر سیستم: URL مستقیماً به PotPlayer/VLC داده می‌شود.
+      // مرورگر MKV را پخش نمی‌کند ولی پلیر سیستم آن را استریم می‌کند (بدون دانلود کامل).
+      if (stream === true && /^https?:\/\//i.test(target)) {
+        if (!firstAvailableDesktopPlayer()) {
+          return NextResponse.json(
+            { error: 'پخش‌کننده‌ای (PotPlayer/VLC/...) روی سیستم پیدا نشد' },
+            { status: 400 }
+          )
+        }
+        const outcome = await withPlayLock(() =>
+          requestId === latestRequest ? openAndVerify(target) : Promise.resolve(superseded())
+        )
+        if (!outcome.success) {
+          return NextResponse.json({ error: outcome.error, ...outcome }, { status: 502 })
+        }
+        return NextResponse.json({ resolvedPath: target, stream: true, ...outcome })
+      }
+
       // لینک وب (پینترست/اینستاگرام/لینک مستقیم) در مرورگر پیش‌فرض باز می‌شود؛
       // برخلاف فایل محلی، پخش‌کنندهٔ در حال اجرای کاربر نباید بسته شود.
       openUrl(target)
