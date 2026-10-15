@@ -348,12 +348,20 @@ select option {
   --scrollbar-thumb-hover: rgba(239, 68, 68, 0.7);
   --selection-bg: rgba(239, 68, 68, 0.4);
 }
-/* NYC skyline silhouette at bottom for Spider-Man */
+/* NYC skyline silhouette at bottom for Spider-Man + Pinterest background texture */
 [data-theme='spiderman'] body::before {
   background:
+    /* TOP: خطِ افقتِ NYC — تیره‌تر پایین صفحه */
     linear-gradient(180deg, transparent 65%, rgba(0,0,0,0.5) 95%),
+    /* هالهٔ قرمز گوشهٔ بالا-راست */
     radial-gradient(70vw 60vh at 12% -12%, var(--glow-1), transparent 60%),
+    /* هالهٔ آبی گوشهٔ بالا-چپ */
     radial-gradient(55vw 55vh at 92% 8%, var(--glow-2), transparent 60%),
+    /* لایهٔ سیاه ۸۰٪ — تصویرِ پین‌ترست رو subtle می‌کنه، ولی هاله‌های بالایی دست‌نخورده می‌مونن */
+    linear-gradient(rgba(10, 8, 16, 0.82), rgba(10, 8, 16, 0.82)),
+    /* تصویرِ Pinterest از Spider-Man — لایهٔ پایینِ texture */
+    url('/themes/spiderman/bg.jpg') center top / cover no-repeat,
+    /* رنگِ پس‌زمینهٔ اصلی */
     var(--background);
 }
 /* Spider-sense pulse on hover for primary CTAs */
