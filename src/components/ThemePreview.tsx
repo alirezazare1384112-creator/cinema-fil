@@ -96,24 +96,12 @@ export default function ThemePreview({ theme }: ThemePreviewProps) {
       style={{
         backgroundColor: bg,
         backgroundImage:
-          // Spider-Man: تصویرِ Pinterest به‌عنوان لایهٔ پایین + هاله‌های رنگ
-          theme.id === 'spiderman'
-            ? `radial-gradient(60% 80% at 20% 10%, ${theme.swatch[0]}33, transparent 60%), radial-gradient(50% 60% at 90% 10%, ${theme.swatch[1]}26, transparent 60%), linear-gradient(rgba(10,8,16,0.78), rgba(10,8,16,0.78)), url('/themes/spiderman/bg.jpg')`
-            : pattern.url != null
-              ? `${pattern.url}, radial-gradient(60% 80% at 20% 10%, ${theme.swatch[0]}33, transparent 60%), radial-gradient(50% 60% at 90% 10%, ${theme.swatch[1]}26, transparent 60%)`
-              : `radial-gradient(60% 80% at 20% 10%, ${theme.swatch[0]}33, transparent 60%), radial-gradient(50% 60% at 90% 10%, ${theme.swatch[1]}26, transparent 60%)`,
-        backgroundSize:
-          theme.id === 'spiderman'
-            ? '100% 100%, 100% 100%, 100% 100%, cover'
-            : `${pattern.size}, 100% 100%, 100% 100%`,
-        backgroundPosition:
-          theme.id === 'spiderman'
-            ? 'center, center, center, center top'
-            : 'center top, center, center',
-        backgroundRepeat:
-          theme.id === 'spiderman'
-            ? 'no-repeat, no-repeat, no-repeat, no-repeat'
-            : 'repeat, no-repeat, no-repeat'
+          pattern.url != null
+            ? `${pattern.url}, radial-gradient(60% 80% at 20% 10%, ${theme.swatch[0]}33, transparent 60%), radial-gradient(50% 60% at 90% 10%, ${theme.swatch[1]}26, transparent 60%)`
+            : `radial-gradient(60% 80% at 20% 10%, ${theme.swatch[0]}33, transparent 60%), radial-gradient(50% 60% at 90% 10%, ${theme.swatch[1]}26, transparent 60%)`,
+        backgroundSize: `${pattern.size}, 100% 100%, 100% 100%`,
+        backgroundPosition: 'center top, center, center',
+        backgroundRepeat: 'repeat, no-repeat, no-repeat'
       }}
     >
       {/* Subtle pattern opacity overlay */}
@@ -149,7 +137,7 @@ export default function ThemePreview({ theme }: ThemePreviewProps) {
             {theme.name}
           </p>
           <p className="text-[8px] leading-tight truncate mt-0.5" style={{ color: '#9ca3af' }}>
-            نمونه کارت
+            {theme.id === 'spiderman' ? 'پوستر در نقلِ قول' : 'نمونه کارت'}
           </p>
         </div>
         <span
@@ -162,6 +150,20 @@ export default function ThemePreview({ theme }: ThemePreviewProps) {
           دکمه
         </span>
       </div>
+
+      {/* Spider-Man: یک «movie still» کوچک در گوشهٔ پایین چپ — نشون‌دهندهٔ
+          جایی که تصویر در ریبونِ نقلِ قولِ سایدبار استفاده می‌شه */}
+      {theme.id === 'spiderman' && (
+        <div
+          className="absolute bottom-2 left-2 w-14 h-9 rounded-md overflow-hidden border border-red-500/50 shadow-lg"
+          style={{
+            backgroundImage: 'url(/themes/spiderman/bg.jpg)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center 25%',
+          }}
+          title="تصویر در ریبون نقلِ قول سایدبار استفاده می‌شه"
+        />
+      )}
     </div>
   )
 }
