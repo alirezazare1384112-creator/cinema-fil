@@ -71,7 +71,7 @@ export default function EditsPage() {
   /** تازه باز شدن مودال — کلیک دومِ دابل‌کلیک نباید بیرون مودال را ببندد */
   const playerIgnoreBackdropClick = useRef(false)
   /** پیش‌نمایش زندهٔ لینک در فرم افزودن */
-  const [linkPreview, setLinkPreview] = useState<{ platform: string; embedUrl: string | null; videoUrl: string | null; thumbnail?: string | null } | null>(null)
+  const [linkPreview, setLinkPreview] = useState<{ platform: string; embedUrl: string | null; videoUrl: string | null; thumbnail?: string | null; watchUrl?: string | null; mediaType?: 'image' | 'video' | null } | null>(null)
   /** آخرین کاوری که خودکار از لینک پر شده — برای تمایز از کاور دستی کاربر */
   const autoThumbRef = useRef('')
 
@@ -661,7 +661,7 @@ export default function EditsPage() {
                     </div>
                   )}
                   {/* پیش‌نمایش زندهٔ لینک: پین/ریل همین‌جا می‌آید تا قبل از افزودن ببینی */}
-                  {linkPreview?.embedUrl && (
+                  {linkPreview?.embedUrl && linkPreview.mediaType !== 'image' && (
                     <div className="flex items-center gap-4 mt-3 p-3 rounded-xl bg-white/5 border border-white/10">
                       <iframe
                         src={linkPreview.embedUrl}
@@ -679,18 +679,41 @@ export default function EditsPage() {
                           لازم نیست به پینترست یا اینستاگرام بروید.
                         </p>
                         {linkPreview.thumbnail && (
-                          <div className="flex items-center gap-2 mt-2">
-                            <img
-                              src={linkPreview.thumbnail}
-                              alt="پوستر خودکار"
-                              className="w-14 h-20 object-cover rounded-lg border border-white/10 shrink-0"
-                            />
-                            <p className="text-[11px] text-green-300/90 leading-4">
-                              پوستر به‌صورت خودکار پیدا شد
-                              <br />
-                              و روی کارت ذخیره می‌شود.
-                            </p>
-                          </div>
+                          <p className="text-[11px] text-green-300/90 mt-2">
+                            پوستر به‌صورت خودکار پیدا شد و روی کارت ذخیره می‌شود.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {linkPreview?.mediaType === 'image' && (
+                    <div className="flex items-center gap-4 mt-3 p-3 rounded-xl bg-white/5 border border-white/10">
+                      {linkPreview.thumbnail ? (
+                        <img
+                          src={linkPreview.thumbnail}
+                          alt="تصویر پین"
+                          className="w-28 h-40 object-cover rounded-lg border border-white/10 shrink-0"
+                        />
+                      ) : (
+                        <div className="w-28 h-40 rounded-lg bg-white/10 border border-white/10 shrink-0" />
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm text-white font-medium flex items-center gap-1.5">
+                          <Check className="w-4 h-4 text-green-400" />
+                          تصویر پین شناسایی شد — {linkPreview.platform}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-2 leading-5">
+                          تصویر به‌صورت خودکار کاورِ این ویرایش می‌شود؛ لازم نیست جداگانه وارد کنی.
+                        </p>
+                        {linkPreview.watchUrl && (
+                          <a
+                            href={linkPreview.watchUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[11px] text-violet-300 hover:text-violet-200 mt-2 inline-block"
+                          >
+                            مشاهدهٔ پین در پینترست ↗
+                          </a>
                         )}
                       </div>
                     </div>
@@ -704,13 +727,22 @@ export default function EditsPage() {
                     </div>
                   )}
                   {!newEdit.videoUrl.startsWith('/api/uploads/') && /^https?:\/\//i.test(newEdit.videoUrl.trim()) && (
-                    <input
-                      type="text"
-                      value={newEdit.thumbnailUrl}
-                      onChange={(e) => setNewEdit({ ...newEdit, thumbnailUrl: e.target.value })}
-                      placeholder="کاور/تصویر شاخص (برای پینترست و اینستاگرام خودکار پیدا می‌شود)"
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500 mt-2"
-                    />
+                    <div className="flex items-center gap-2 mt-2">
+                      <input
+                        type="text"
+                        value={newEdit.thumbnailUrl}
+                        onChange={(e) => setNewEdit({ ...newEdit, thumbnailUrl: e.target.value })}
+                        placeholder="کاور/تصویر شاخص (برای پینترست و اینستاگرام خودکار پیدا می‌شود)"
+                        className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500"
+                      />
+                      {newEdit.thumbnailUrl.trim() && (
+                        <img
+                          src={newEdit.thumbnailUrl.trim()}
+                          alt=""
+                          className="w-10 h-14 object-cover rounded-lg border border-white/10 shrink-0"
+                        />
+                      )}
+                    </div>
                   )}
                 </div>
                 <div className="col-span-2">

@@ -8,6 +8,8 @@ interface LinkPreview {
   videoUrl: string | null
   watchUrl: string | null
   thumbnail: string | null
+  /** پین تصویری (بدون ویدیو) یا ویدیویی — برای UI تا تصویر تکراری نمایش داده نشود */
+  mediaType?: 'image' | 'video' | null
 }
 
 const BROWSER_UA =
@@ -21,7 +23,7 @@ function extractOgImage(html: string): string | null {
 }
 
 /** پوستر پین از API رسمی ویجت پینترست (همانی که خودِ امبد استفاده می‌کند)؛ fallback: og:image صفحهٔ پین. */
-async function fetchPinterestPoster(pinId: string): Promise<string | null> {
+async function fetchPinterestPin(pinId: string): Promise<{ url: string | null; isVideo: boolean }> {
   try {
     const res = await fetch(`https://widgets.pinterest.com/v3/pidgets/pins/info/?pin_ids=${pinId}`, {
       headers: { 'User-Agent': BROWSER_UA },
@@ -31,7 +33,8 @@ async function fetchPinterestPoster(pinId: string): Promise<string | null> {
       const data = await res.json()
       const images = data?.[0]?.images
       const url = images?.orig?.url || images?.['736x']?.url || images?.['236x']?.url || null
-      if (url) return String(url)
+      const isVideo = !!(data?.[0]?.videos && Object.keys(data[0].videos).length > 0)
+      if (url || isVideo) return { url: url ? String(url) : null, isVideo }
     }
   } catch {
     /* fallback زیر امتحان می‌شود */
@@ -41,11 +44,11 @@ async function fetchPinterestPoster(pinId: string): Promise<string | null> {
       headers: { 'User-Agent': BROWSER_UA },
       signal: AbortSignal.timeout(6000)
     })
-    if (res.ok) return extractOgImage(await res.text())
+    if (res.ok) return { url: extractOgImage(await res.text()), isVideo: false }
   } catch {
     /* بدون پوستر */
   }
-  return null
+  return { url: null, isVideo: false }
 }
 
 async function fetchOgImage(pageUrl: string): Promise<string | null> {
@@ -103,13 +106,14 @@ async function resolveLink(raw: string): Promise<LinkPreview> {
   // ── Pinterest ──────────────────────────────────────────────
   if (host === 'pin.it' || host.endsWith('pinimg.com') || host.includes('pinterest.')) {
     const pinId = finalUrl.pathname.match(/\/pin\/(\d+)/)?.[1] ?? null
-    const thumbnail = pinId ? await fetchPinterestPoster(pinId) : null
+    const pin = pinId ? await fetchPinterestPin(pinId) : null
     return {
       platform: 'Pinterest',
       embedUrl: pinId ? `https://assets.pinterest.com/ext/embed.html?id=${pinId}` : null,
       videoUrl: null,
       watchUrl: pinId ? `https://www.pinterest.com/pin/${pinId}/` : finalUrl.toString(),
-      thumbnail
+      thumbnail: pin?.url ?? null,
+      mediaType: pin ? (pin.isVideo ? 'video' : pin.url ? 'image' : null) : null
     }
   }
 

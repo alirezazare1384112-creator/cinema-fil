@@ -65,7 +65,13 @@ function httpsGetBuffer(url: string, ip: string, headers: Record<string, string>
   })
 }
 
-/** fetch معمولی؛ اگر شکست (شبکه/DNS مسموم) با DoH + IP واقعی تلاش می‌شود. */
+/** پروکسی تصویر: سرور واسط خودش از مبدأ می‌گیرد؛ حتی وقتی DNS دامنه مسموم یا TLS مسدود باشد کار می‌کند. */
+function weservProxyUrl(raw: string): string {
+  const u = new URL(raw)
+  return `https://images.weserv.nl/?url=${encodeURIComponent(u.hostname + u.pathname + u.search)}&q=95`
+}
+
+/** fetch معمولی؛ اگر شکست (شبکه/DNS مسموم) اول پروکسی تصویر، بعد DoH + IP واقعی تلاش می‌شود. */
 async function downloadImageBuffer(raw: string): Promise<Buffer> {
   try {
     const res = await fetch(raw, {
@@ -76,9 +82,22 @@ async function downloadImageBuffer(raw: string): Promise<Buffer> {
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     return Buffer.from(await res.arrayBuffer())
   } catch {
-    const ip = await dohResolveA(new URL(raw).hostname)
-    if (!ip) throw new Error('دریافت تصویر ناموفق بود')
-    return httpsGetBuffer(raw, ip, { 'User-Agent': BROWSER_UA })
+    try {
+      const proxied = await fetch(weservProxyUrl(raw), {
+        signal: AbortSignal.timeout(20000),
+        redirect: 'follow',
+        headers: { 'User-Agent': BROWSER_UA }
+      })
+      if (proxied.ok) {
+        const buf = Buffer.from(await proxied.arrayBuffer())
+        if (buf.length > 0) return buf
+      }
+      throw new Error(`proxy HTTP ${proxied.status}`)
+    } catch {
+      const ip = await dohResolveA(new URL(raw).hostname)
+      if (!ip) throw new Error('دریافت تصویر ناموفق بود')
+      return httpsGetBuffer(raw, ip, { 'User-Agent': BROWSER_UA })
+    }
   }
 }
 
