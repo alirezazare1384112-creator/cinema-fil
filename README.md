@@ -34,15 +34,15 @@
 
 ### Windows (one-click)
 
-```bat
-git clone https://github.com/alirezazare1384112-creator/cinema-fil.git
-cd cinema-fil
-setup.bat
-```
+1. Install **[Node.js 20 LTS](https://nodejs.org)** once (check: `node -v` in a terminal).
+2. Download this repo: `Code` → **Download ZIP**, then **extract the whole ZIP** (never download individual files).
+3. Open the extracted folder — the one where `setup.bat` sits next to `package.json` — and double-click **`setup.bat`**.
 
-`setup.bat` installs dependencies, creates the empty SQLite database, and starts the app — the browser opens automatically at **http://localhost:3000**.
+`setup.bat` verifies each step (right folder, Node version, npm), installs dependencies, retries once against a mirror registry on network failures, creates the empty SQLite database, and opens the app at **http://localhost:3000**. Every step is appended to **`install.log`** — if anything fails, send that file.
 
 For subsequent runs, just double-click **`start-cinephile.bat`** (auto-restarts the server if it stops).
+
+> **Double-click did nothing, or commands say `package.json` not found (ENOENT)?** You are not inside the project folder. Open the folder in Explorer, type `cmd` in the address bar, press Enter, then run `setup.bat` — the prompt is guaranteed to be in the right directory.
 
 ### macOS / Linux
 
@@ -186,11 +186,16 @@ PRs welcome! Please run `npm run lint` and `npm run build` before submitting.
 
 ### نصب سه‌قدمی
 
-1. [Node.js نسخهٔ ۲۰ یا بالاتر](https://nodejs.org) را نصب کن (یک‌بار برای همیشه)
-2. ریپو را دانلود کن: `Code` → `Download ZIP` (یا `git clone`)
-3. داخل پوشه، روی **`setup.bat`** دوبار کلیک کن — خودش نصب می‌کند، دیتابیس خالی می‌سازد و برنامه را بالا می‌آورد
+1. [Node.js نسخهٔ ۲۰](https://nodejs.org) را نصب کن (یک‌بار برای همیشه)
+2. ریپو را دانلود کن: `Code` → `Download ZIP` — **کل ZIP را Extract کن** (فایل‌ها را تکی دانلود نکن)
+3. وارد پوشهٔ استخراج‌شده شو — جایی که **`setup.bat` کنار `package.json` است** — و روی `setup.bat` دوبار کلیک کن
 
-> دفعات بعد کافی است **`start-cinephile.bat`** را اجرا کنی.
+نصب ۱ تا ۵ دقیقه طول می‌کشد؛ **پنجره را نبند**. `setup.bat` هر مرحله را چک می‌کند، اگر خطای شبکه بدهد خودش یک‌بار با سرور جایگزین دوباره تلاش می‌کند و همهٔ مراحل را در فایل `install.log` می‌نویسد.
+
+> اگر دابل‌کلیک **هیچ‌چیز نشان نداد** یا خطا داد `package.json not found`:
+> یعنی داخل پوشهٔ پروژه نیستی. در Explorer وارد پوشهٔ پروژه شو، در **نوار آدرس** تایپ کن `cmd` و Enter بزن؛
+> بعد بنویس `setup.bat` و Enter. با این روش مطمئنی پنجره دقیقاً داخل پوشهٔ درست باز شده.
+> هر خطایی دیدی، فایل `install.log` کنار setup را بفرست.
 
 ### بعد از نصب: وصل کردن فایل‌های خودت
 

@@ -2,46 +2,72 @@
 chcp 65001 >nul
 cd /d "%~dp0"
 
+if not exist "package.json" goto wrong_place
+
 where npm >nul 2>nul
-if errorlevel 1 (
-    echo  [خطا] Node.js / npm پیدا نشد.
-    echo  از https://nodejs.org نسخه 20 یا بالاتر را نصب کن،
-    echo  سپس دوباره همین فایل را اجرا کن.
-    echo.
-    pause
-    exit /b 1
-)
+if errorlevel 1 goto no_node
 
-if not exist node_modules\next (
-    echo  در حال نصب کتابخانه‌ها - ممکن است یک تا چند دقیقه طول بکشد...
-    rem نصب ناتمام قبلی را کامل پاک کن تا از صفر برود
-    if exist node_modules rmdir /s /q node_modules
-    call npm install
-    if errorlevel 1 (
-        echo  [خطا] نصب کتابخانه‌ها ناموفق بود.
-        echo  اگر خطای شبکه یا اینترنت دیدی، اول این دستور را بزن:
-        echo  npm config set registry https://registry.npmmirror.com
-        echo  بعد پوشه node_modules را حذف کن و دوباره همین فایل را اجرا کن.
-        echo.
-        pause
-        exit /b 1
-    )
-)
+if exist node_modules\next goto ready
 
+rem نصب ناقص يا نصب اول - از صفر و با تکرار روي سرور جايگزين
+echo  در حال نصب کتابخانه ها - يک تا چند دقيقه طول مي کشد؛ پنجره را نبنديد.
+if exist node_modules rmdir /s /q node_modules
+call npm install
+if errorlevel 1 goto install_retry
+goto check_next
+
+:install_retry
+echo  [خطا] نصب اول ناموفق شد - تلاش مجدد با سرور جايگزين...
+call npm config set registry https://registry.npmmirror.com
+set PRISMA_ENGINES_MIRROR=https://registry.npmmirror.com/-/binary/prisma
+call npm install
+if errorlevel 1 goto install_failed
+
+:check_next
+if not exist "node_modules\next" goto install_failed
+
+:ready
 title Cinephile Vault
 echo ============================================================
-echo  سینمافیل دارد بالا می‌آید...
+echo  سينمافيل دارد بالا مي آيد...
 echo  آدرس: http://localhost:3000
-echo  اگر سرور به هر دلیلی متوقف شد، خودش دوباره بالا می‌آید.
-echo  برای خاموش کردن کامل، این پنجره را ببندید (X).
+echo  اگر سرور به هر دليلي متوقف شد، خودش دوباره بالا مي آيد.
+echo  براي خاموش کردن کامل، اين پنجره را ببنديد (X).
 echo ============================================================
 
-rem باز شدن مرورگر پیش‌فرض کاربر پس از آماده شدن سرور
+rem باز شدن مرورگر پيش فرض کاربر پس از آماده شدن سرور
 start "" /B cmd /c "timeout /t 10 /nobreak >nul && start msedge http://localhost:3000"
 
 :loop
 call npm run dev
 echo.
-echo [سینمافیل] سرور متوقف شد - 3 ثانیه دیگر دوباره بالا می‌آید...
+echo [سينمافيل] سرور متوقف شد - 3 ثانيه ديگر دوباره بالا مي آيد...
 timeout /t 3 /nobreak >nul
 goto loop
+
+:wrong_place
+echo  ============================================================
+echo   [خطا] اين فايل داخل پوشه درستِ پروژه نيست!
+echo   وارد پوشه اي شو که package.json کنارش هست و بعد
+echo   setup.bat يا همين start را بزن.
+echo  ============================================================
+explorer .
+pause
+exit /b 1
+
+:no_node
+echo  [خطا] Node.js / npm پيدا نشد.
+echo  از https://nodejs.org نسخه 20 را نصب کن و دوباره اجرا کن.
+echo.
+pause
+exit /b 1
+
+:install_failed
+echo  ============================================================
+echo   [خطا] نصب کتابخانه ها ناموفق ماند.
+echo   اينترنت يا VPN را روشن کن و دوباره اين فايل را بزن.
+echo   اگر نشد، فايل install.log را براي من بفرست.
+echo  ============================================================
+echo.
+pause
+exit /b 1
