@@ -18,9 +18,8 @@ goto check_next
 
 :install_retry
 echo  [خطا] نصب اول ناموفق شد - تلاش مجدد با سرور جايگزين...
-call npm config set registry https://registry.npmmirror.com
 set PRISMA_ENGINES_MIRROR=https://registry.npmmirror.com/-/binary/prisma
-call npm install
+call npm install --registry=https://registry.npmmirror.com
 if errorlevel 1 goto install_failed
 
 :check_next

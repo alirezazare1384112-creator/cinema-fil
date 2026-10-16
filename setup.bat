@@ -36,10 +36,9 @@ goto install_done
 :install_retry
 echo [%date% %time%] npm install failed, retry with mirror >> install.log
 echo  [خطا] نصب اول ناموفق شد - در حال تلاش مجدد با سرور جايگزين...
-call npm config set registry https://registry.npmmirror.com
 set PRISMA_ENGINES_MIRROR=https://registry.npmmirror.com/-/binary/prisma
 if exist node_modules rmdir /s /q node_modules
-call npm install
+call npm install --registry=https://registry.npmmirror.com
 if errorlevel 1 goto install_failed
 echo [%date% %time%] npm install mirror OK >> install.log
 goto install_done
