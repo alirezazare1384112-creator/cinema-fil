@@ -22,33 +22,35 @@ function extractOgImage(html: string): string | null {
   return m ? m[1] : null
 }
 
-/** پوستر پین از API رسمی ویجت پینترست (همانی که خودِ امبد استفاده می‌کند)؛ fallback: og:image صفحهٔ پین. */
-async function fetchPinterestPin(pinId: string): Promise<{ url: string | null; isVideo: boolean }> {
-  try {
-    const res = await fetch(`https://widgets.pinterest.com/v3/pidgets/pins/info/?pin_ids=${pinId}`, {
-      headers: { 'User-Agent': BROWSER_UA },
-      signal: AbortSignal.timeout(6000)
-    })
-    if (res.ok) {
-      const data = await res.json()
-      const images = data?.[0]?.images
-      const url = images?.orig?.url || images?.['736x']?.url || images?.['236x']?.url || null
-      const isVideo = !!(data?.[0]?.videos && Object.keys(data[0].videos).length > 0)
-      if (url || isVideo) return { url: url ? String(url) : null, isVideo }
-    }
-  } catch {
-    /* fallback زیر امتحان می‌شود */
-  }
+/** بهترین mp4 قابل‌پخش در مرورگر از دلِ HTML صفحهٔ پین (JSON-escape شده)؛ نسخه‌های HEVC رد می‌شوند. */
+function pickBrowserMp4(html: string): string | null {
+  const raw = html.match(/https?:\\?\/\\?\/v1\.pinimg\.com\\?\/videos\\?\/[^"'\\\s]+\.mp4/g) || []
+  const urls = Array.from(new Set(raw.map((s) => s.replace(/\\\//g, '/'))))
+  return urls.find((u) => !/hevc|h265/i.test(u)) || null
+}
+
+/**
+ * اطلاعات پین از یک fetchِ همان صفحهٔ پین (ویجت API عملاً خالی برمی‌گرداند و کند بود):
+ * og:image برای کاور + تشخیص ویدیویی از videoUrls/videoDataV2 + آدرس مستقیم mp4 سازگار مرورگر.
+ */
+async function fetchPinterestPin(
+  pinId: string
+): Promise<{ url: string | null; isVideo: boolean; directVideoUrl: string | null }> {
   try {
     const res = await fetch(`https://www.pinterest.com/pin/${pinId}/`, {
       headers: { 'User-Agent': BROWSER_UA },
-      signal: AbortSignal.timeout(6000)
+      signal: AbortSignal.timeout(8000)
     })
-    if (res.ok) return { url: extractOgImage(await res.text()), isVideo: false }
+    if (res.ok) {
+      const html = await res.text()
+      const url = extractOgImage(html)
+      const isVideo = /"videoUrls"|"videoDataV2"|pinimg\.com\/videos\//.test(html)
+      return { url, isVideo, directVideoUrl: isVideo ? pickBrowserMp4(html) : null }
+    }
   } catch {
     /* بدون پوستر */
   }
-  return { url: null, isVideo: false }
+  return { url: null, isVideo: false, directVideoUrl: null }
 }
 
 async function fetchOgImage(pageUrl: string): Promise<string | null> {
@@ -110,7 +112,7 @@ async function resolveLink(raw: string): Promise<LinkPreview> {
     return {
       platform: 'Pinterest',
       embedUrl: pinId ? `https://assets.pinterest.com/ext/embed.html?id=${pinId}` : null,
-      videoUrl: null,
+      videoUrl: pin?.directVideoUrl ?? null,
       watchUrl: pinId ? `https://www.pinterest.com/pin/${pinId}/` : finalUrl.toString(),
       thumbnail: pin?.url ?? null,
       mediaType: pin ? (pin.isVideo ? 'video' : pin.url ? 'image' : null) : null
@@ -144,6 +146,10 @@ async function resolveLink(raw: string): Promise<LinkPreview> {
   return { platform: null, embedUrl: null, videoUrl: null, watchUrl: finalUrl.toString(), thumbnail: null }
 }
 
+/** کش در حافظهٔ سرور — کلیک مجدد روی کارت/لینک قبلی بدون شبکه، آنی باز می‌شود. */
+const previewCache = new Map<string, { data: LinkPreview; ts: number }>()
+const PREVIEW_CACHE_TTL = 30 * 60 * 1000
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const url = searchParams.get('url')?.trim()
@@ -151,8 +157,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'url is required' }, { status: 400 })
   }
 
+  const cached = previewCache.get(url)
+  if (cached && Date.now() - cached.ts < PREVIEW_CACHE_TTL) {
+    return NextResponse.json(cached.data)
+  }
+
   try {
     const preview = await resolveLink(url)
+    if (previewCache.size > 200) previewCache.clear()
+    previewCache.set(url, { data: preview, ts: Date.now() })
     return NextResponse.json(preview)
   } catch (err) {
     const message = err instanceof Error ? err.message : 'unknown'

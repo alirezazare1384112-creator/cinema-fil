@@ -74,6 +74,12 @@ export default function EditsPage() {
   const [linkPreview, setLinkPreview] = useState<{ platform: string; embedUrl: string | null; videoUrl: string | null; thumbnail?: string | null; watchUrl?: string | null; mediaType?: 'image' | 'video' | null } | null>(null)
   /** آخرین کاوری که خودکار از لینک پر شده — برای تمایز از کاور دستی کاربر */
   const autoThumbRef = useRef('')
+  /** در حال محلی‌سازی کاورِ راه‌دور (جلوگیری از تلاش هم‌زمان روی یک ادیت) */
+  const localizingRef = useRef<Set<string>>(new Set())
+  /** ادیت‌هایی که یک‌بار برای درمان کاور راه‌دور بررسی شده‌اند */
+  const healCheckedRef = useRef<Set<string>>(new Set())
+  /** لینک در حال تشخیص در فرم */
+  const [previewLoading, setPreviewLoading] = useState(false)
 
   // بستن مودال با Esc و قفل اسکرول صفحه هنگام باز بودن
   useEffect(() => {
@@ -96,8 +102,10 @@ export default function EditsPage() {
     const timer = setTimeout(async () => {
       if (!isHttp) {
         setLinkPreview(null)
+        setPreviewLoading(false)
         return
       }
+      setPreviewLoading(true)
       try {
         const res = await fetch(`/api/link-preview?url=${encodeURIComponent(url)}`)
         const data = await res.json()
@@ -113,6 +121,8 @@ export default function EditsPage() {
         }
       } catch {
         setLinkPreview(null)
+      } finally {
+        setPreviewLoading(false)
       }
     }, isHttp ? 700 : 50)
     return () => clearTimeout(timer)
@@ -136,8 +146,42 @@ export default function EditsPage() {
       const response = await fetch(`/api/edits?folderId=${folderId}`)
       const data = await response.json()
       setEdits(data)
+      // کاورهای راه‌دور (پینترست قدیمی) در پس‌زمینه محلی شوند → کارت‌ها سریع و پایدار بارگذاری می‌شوند
+      if (Array.isArray(data)) void healRemoteCovers(data)
     } catch (error) {
       console.error('Error fetching edits:', error)
+    }
+  }
+
+  /** ذخیرهٔ محلیِ کاورِ راه‌دور در پس‌زمینه و جایگزینی بی‌صدا در state */
+  const localizeCover = async (editId: string, remoteUrl: string) => {
+    if (localizingRef.current.has(editId)) return
+    localizingRef.current.add(editId)
+    try {
+      const local = await saveImageUrl(remoteUrl)
+      const res = await fetch('/api/edits', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editId, thumbnailUrl: local })
+      })
+      if (!res.ok) throw new Error('PUT failed')
+      setEdits((prev) => prev.map((e) => (e.id === editId ? { ...e, thumbnailUrl: local } : e)))
+      setFolders((prev) => prev.map((f) => (f.thumbnailUrl === remoteUrl ? { ...f, thumbnailUrl: local } : f)))
+    } catch {
+      /* بی‌صدا — نسخهٔ راه‌دور می‌ماند و دفعهٔ بعد دوباره تلاش می‌شود */
+    } finally {
+      localizingRef.current.delete(editId)
+    }
+  }
+
+  /** فقط کاورهای http(s)ی که هنوز محلی نشده‌اند، با هم‌زمانی محدود درمان می‌شوند */
+  const healRemoteCovers = async (list: MediaEdit[]) => {
+    const targets = list.filter(
+      (e) => /^https?:\/\//i.test(e.thumbnailUrl || '') && !healCheckedRef.current.has(e.id)
+    )
+    for (const e of targets) healCheckedRef.current.add(e.id)
+    for (let i = 0; i < targets.length; i += 2) {
+      await Promise.all(targets.slice(i, i + 2).map((e) => localizeCover(e.id, e.thumbnailUrl as string)))
     }
   }
 
@@ -182,16 +226,8 @@ export default function EditsPage() {
     }
 
     try {
-      // کاورِ لینکی یک‌بار دانلود و محلی می‌شود تا به سایت مبدأ وابسته نماند
-      let thumbnailUrl = newEdit.thumbnailUrl.trim() || null
-      if (thumbnailUrl && /^https?:\/\//i.test(thumbnailUrl)) {
-        try {
-          thumbnailUrl = await saveImageUrl(thumbnailUrl)
-        } catch {
-          toast('کاور از لینک دریافت نشد؛ همان آدرس خام استفاده شد', 'warning')
-        }
-      }
-
+      // افزودن بی‌درنگ: اول ردیف ساخته می‌شود و مودال می‌بندد؛
+      // کاورِ راه‌دورِ لینکی بعداً در پس‌زمینه محلی می‌شود (دیگر منتظر دانلود تصویر نمی‌مانیم)
       const response = await fetch('/api/edits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -200,7 +236,7 @@ export default function EditsPage() {
           title: newEdit.title,
           description: newEdit.description || null,
           videoUrl: rawUrl,
-          thumbnailUrl,
+          thumbnailUrl: newEdit.thumbnailUrl.trim() || null,
           tags: newEdit.tags.length > 0 ? newEdit.tags : null,
           audioInfo: newEdit.audioInfo || null
         })
@@ -219,6 +255,11 @@ export default function EditsPage() {
       toast('ویرایش با موفقیت اضافه شد', 'success')
       resetNewEdit()
       setIsAddingEdit(false)
+      const remoteThumb = (edit.thumbnailUrl || '').trim()
+      if (/^https?:\/\//i.test(remoteThumb) && edit.id) {
+        healCheckedRef.current.add(edit.id)
+        void localizeCover(edit.id, remoteThumb)
+      }
     } catch (error) {
       console.error('Error adding edit:', error)
       toast('خطا در ارتباط با سرور', 'error')
@@ -631,6 +672,12 @@ export default function EditsPage() {
                     placeholder="https://www.instagram.com/reel/... یا https://pin.it/..."
                     className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500 mt-2"
                   />
+                  {previewLoading && (
+                    <p className="text-xs text-gray-400 mt-2 flex items-center gap-1.5">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-violet-400" />
+                      در حال تشخیص لینک…
+                    </p>
+                  )}
                   {!newEdit.videoUrl.startsWith('/api/uploads/') && newEdit.videoUrl && (
                     <div className="flex items-center gap-2 mt-2">
                       {(() => {
@@ -1082,20 +1129,20 @@ export default function EditsPage() {
               <X className="w-6 h-6" />
             </button>
             <div className="rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_80px_rgba(236,72,153,0.18)] bg-black">
-              {player.embedUrl ? (
+              {player.videoUrl ? (
+                <video
+                  src={player.videoUrl}
+                  controls
+                  autoPlay
+                  className="w-full max-h-[72vh] bg-black"
+                />
+              ) : player.embedUrl ? (
                 <iframe
                   src={player.embedUrl}
                   title={player.title}
                   className="w-full h-[72vh] max-h-[760px] border-0"
                   allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
                   allowFullScreen
-                />
-              ) : player.videoUrl ? (
-                <video
-                  src={player.videoUrl}
-                  controls
-                  autoPlay
-                  className="w-full max-h-[72vh] bg-black"
                 />
               ) : null}
             </div>

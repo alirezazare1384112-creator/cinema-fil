@@ -71,33 +71,29 @@ function weservProxyUrl(raw: string): string {
   return `https://images.weserv.nl/?url=${encodeURIComponent(u.hostname + u.pathname + u.search)}&q=95`
 }
 
-/** fetch معمولی؛ اگر شکست (شبکه/DNS مسموم) اول پروکسی تصویر، بعد DoH + IP واقعی تلاش می‌شود. */
+/** دریافت یک منبع با abort؛ خطا یا بافر برمی‌گرداند. */
+async function fetchBuffer(url: string, timeoutMs: number): Promise<Buffer> {
+  const res = await fetch(url, {
+    signal: AbortSignal.timeout(timeoutMs),
+    redirect: 'follow',
+    headers: { 'User-Agent': BROWSER_UA }
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return Buffer.from(await res.arrayBuffer())
+}
+
+/** مسابقهٔ هم‌زمانِ fetch مستقیم و پروکسی تصویر — هر کدام زودتر جواب داد برد؛ فقط DoH واقعی fallback است. */
 async function downloadImageBuffer(raw: string): Promise<Buffer> {
+  const racers = Promise.any([
+    fetchBuffer(raw, 6000),
+    fetchBuffer(weservProxyUrl(raw), 15000)
+  ])
   try {
-    const res = await fetch(raw, {
-      signal: AbortSignal.timeout(15000),
-      redirect: 'follow',
-      headers: { 'User-Agent': BROWSER_UA }
-    })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    return Buffer.from(await res.arrayBuffer())
+    return await racers
   } catch {
-    try {
-      const proxied = await fetch(weservProxyUrl(raw), {
-        signal: AbortSignal.timeout(20000),
-        redirect: 'follow',
-        headers: { 'User-Agent': BROWSER_UA }
-      })
-      if (proxied.ok) {
-        const buf = Buffer.from(await proxied.arrayBuffer())
-        if (buf.length > 0) return buf
-      }
-      throw new Error(`proxy HTTP ${proxied.status}`)
-    } catch {
-      const ip = await dohResolveA(new URL(raw).hostname)
-      if (!ip) throw new Error('دریافت تصویر ناموفق بود')
-      return httpsGetBuffer(raw, ip, { 'User-Agent': BROWSER_UA })
-    }
+    const ip = await dohResolveA(new URL(raw).hostname)
+    if (!ip) throw new Error('دریافت تصویر ناموفق بود')
+    return httpsGetBuffer(raw, ip, { 'User-Agent': BROWSER_UA })
   }
 }
 
@@ -109,11 +105,20 @@ function sniffImage(buf: Buffer): string | null {
   return null
 }
 
+/** کش «آدرس راه‌دور → فایل محلی» — ذخیرهٔ تکراری همان لینک آنی است و فایل تکراری ساخته نمی‌شود. */
+const savedUrlCache = new Map<string, string>()
+const SAVED_CACHE_LIMIT = 500
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const raw = searchParams.get('url') || ''
   if (!/^https?:\/\//i.test(raw)) {
     return NextResponse.json({ error: 'آدرس تصویر نامعتبر است' }, { status: 400 })
+  }
+
+  const cached = savedUrlCache.get(raw)
+  if (cached) {
+    return NextResponse.json({ url: cached })
   }
 
   try {
@@ -135,6 +140,9 @@ export async function GET(request: NextRequest) {
     const dir = path.join(process.cwd(), 'uploads')
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
     fs.writeFileSync(path.join(dir, name), buf)
+
+    if (savedUrlCache.size >= SAVED_CACHE_LIMIT) savedUrlCache.clear()
+    savedUrlCache.set(raw, `/api/uploads/${name}`)
 
     return NextResponse.json({ url: `/api/uploads/${name}` })
   } catch (error) {
