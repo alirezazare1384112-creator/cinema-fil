@@ -12,11 +12,17 @@ if errorlevel 1 (
     exit /b 1
 )
 
-if not exist node_modules (
+if not exist node_modules\next (
     echo  در حال نصب کتابخانه‌ها - ممکن است یک تا چند دقیقه طول بکشد...
+    rem نصب ناتمام قبلی را کامل پاک کن تا از صفر برود
+    if exist node_modules rmdir /s /q node_modules
     call npm install
     if errorlevel 1 (
-        echo  [خطا] نصب کتابخانه‌ها ناموفق بود. اینترنت را چک کن و دوباره اجرا کن.
+        echo  [خطا] نصب کتابخانه‌ها ناموفق بود.
+        echo  اگر خطای شبکه یا اینترنت دیدی، اول این دستور را بزن:
+        echo  npm config set registry https://registry.npmmirror.com
+        echo  بعد پوشه node_modules را حذف کن و دوباره همین فایل را اجرا کن.
+        echo.
         pause
         exit /b 1
     )
