@@ -321,15 +321,34 @@ function openUrl(url: string): void {
   }
 }
 
+/**
+ * نتیجهٔ جست‌وجوی پخش‌کننده یک‌بار کش می‌شود؛ قبلاً برای هر درخواست — و در
+ * مسیر «قسمت بعد» چند بار — هشت مسیر با existsSync چک می‌شد.
+ */
+let cachedPlayer: string | null | undefined
+
 function firstAvailableDesktopPlayer(): string | null {
+  if (cachedPlayer !== undefined) return cachedPlayer
+
   const fromEnv = process.env.CINEPHILE_PLAYER
   if (fromEnv) {
-    try { if (fs.existsSync(fromEnv)) return fromEnv } catch { /* ignore */ }
+    try {
+      if (fs.existsSync(fromEnv)) {
+        cachedPlayer = fromEnv
+        return cachedPlayer
+      }
+    } catch { /* ignore */ }
   }
   for (const candidate of DESKTOP_PLAYERS) {
-    try { if (fs.existsSync(candidate)) return candidate } catch { /* ignore */ }
+    try {
+      if (fs.existsSync(candidate)) {
+        cachedPlayer = candidate
+        return cachedPlayer
+      }
+    } catch { /* ignore */ }
   }
-  return null
+  cachedPlayer = null
+  return cachedPlayer
 }
 
 /**

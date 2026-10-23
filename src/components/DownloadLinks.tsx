@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { Download, Subtitles, Copy, Check, Play, X, MonitorPlay } from 'lucide-react'
-import { pickPlayable, isHevcQuality } from '@/lib/playable'
+import { pickPlayable, isHevcQuality, isBrowserPlayable, buildSeries } from '@/lib/playable'
+import SeriesStream from '@/components/SeriesStream'
 
 export interface DownloadItem {
   group: string
@@ -13,6 +14,41 @@ export interface DownloadItem {
 export interface SubtitleLink {
   label: string
   url: string
+}
+
+/** یک چیپ «دانلود + کپی» — مشترک بین نمای فیلم و نمای فصل/نسخهٔ سریال */
+function DownloadChip({
+  quality,
+  url,
+  copied,
+  onCopy
+}: {
+  quality: string
+  url: string
+  copied: boolean
+  onCopy: (url: string) => void
+}) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 overflow-hidden">
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-emerald-300 hover:bg-emerald-500/25 transition-colors"
+        title={`دانلود ${quality}`}
+      >
+        <Download className="w-3.5 h-3.5" />
+        {quality}
+      </a>
+      <button
+        onClick={() => onCopy(url)}
+        title="کپی لینک"
+        className="px-2 py-1.5 text-emerald-300/70 hover:text-emerald-200 hover:bg-emerald-500/25 transition-colors border-r border-emerald-500/20"
+      >
+        {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+      </button>
+    </span>
+  )
 }
 
 interface DownloadLinksProps {
@@ -57,29 +93,39 @@ export default function DownloadLinks({
     }
   }
 
-  // گروه‌بندی بر اساس نوع نسخه / فصل
-  const groups: { group: string; items: { quality: string; url: string }[] }[] = []
-  for (const d of downloads || []) {
-    const key = d.group || 'سایر'
-    let group = groups.find((x) => x.group === key)
-    if (!group) {
-      group = { group: key, items: [] }
-      groups.push(group)
-    }
-    group.items.push({ quality: d.quality, url: d.url })
-  }
-
   const youtubeKey =
     trailerKey || (trailer ? (trailer.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|embed\/)([\w-]{6,})/) || [])[1] : undefined)
   const trailerMp4 = !youtubeKey && trailer && !trailer.includes('youtube') ? trailer : null
   const subtitleLinks = subtitles || []
 
-  // پخش آنلاین: h264 (mp4/mkv) داخل مرورگر پخش می‌شود؛ نسخه‌های x265/10bit در پلیر سیستم
-  const playable = pickPlayable(downloads)
-  const browserList = playable.filter((p) => !isHevcQuality(p.quality))
+  // سریال یا فیلم؟ اگر لینک‌ها قسمت‌دار باشند، بخش پخش آنلاین به
+  // «فصل / نسخه / قسمت» تبدیل می‌شود تا همهٔ قسمت‌ها قابل تماشا باشند.
+  const series = buildSeries(downloads)
+  // فقط وقتی «لیست قسمت» واقعی داریم (دست‌کم دو قسمت در یک نسخه) سریال حساب می‌شود؛
+  // فیلمی که برچسب کیفیتش عددی است نباید اشتباهی سریال شود.
+  const isSeries = series.seasons.some((s) => s.variants.some((v) => v.episodes.length >= 2))
+
+  // گروه‌بندی بر اساس نوع نسخه / فصل — برای سریال لازم نیست، چون نمایش
+  // فصل/نسخه از همان ساختار buildSeries می‌آید (۳۰۰ لینک = ۳۰۰ آبجکت اضافه).
+  const groups: { group: string; items: { quality: string; url: string }[] }[] = []
+  if (!isSeries) {
+    for (const d of downloads || []) {
+      const key = d.group || 'سایر'
+      let group = groups.find((x) => x.group === key)
+      if (!group) {
+        group = { group: key, items: [] }
+        groups.push(group)
+      }
+      group.items.push({ quality: d.quality, url: d.url })
+    }
+  }
+
+  // پخش آنلاین فیلم: mp4 غیر-HEVC داخل مرورگر، بقیه (MKV/x265) در پلیر سیستم
+  const playable = isSeries ? [] : pickPlayable(downloads)
+  const browserList = playable.filter((p) => isBrowserPlayable(p))
   const best = playable.length > 0 ? playable[0] : null
-  const bestIsBrowser = best ? !isHevcQuality(best.quality) : false
-  const bestIsHevc = best ? isHevcQuality(best.quality) : false
+  const bestIsBrowser = best ? isBrowserPlayable(best) : false
+  const bestIsHevc = best ? isHevcQuality(`${best.quality} ${best.group}`) : false
   const subPageUrl = subtitles?.find((s) =>
     /^https:\/\/(?:www\.)?(?:subzone\.ir|subf2m\.co)\/subtitles\/[^/]+\/?$/.test(s.url)
   )?.url
@@ -116,13 +162,24 @@ export default function DownloadLinks({
     }
   }
 
-  if (groups.length === 0 && subtitleLinks.length === 0 && !youtubeKey && !trailerMp4) return null
+  const hasDownloads = (downloads || []).length > 0
+  if (!hasDownloads && subtitleLinks.length === 0 && !youtubeKey && !trailerMp4) return null
 
   const current = browserList.find((p) => p.url === playingUrl)
 
   return (
     <div className={className}>
-      {playable.length > 0 && (
+      {isSeries && (
+        <SeriesStream
+          seasons={series.seasons}
+          title={title}
+          posterSrc={posterSrc}
+          trackUrl={trackUrl}
+          className="mt-6"
+        />
+      )}
+
+      {!isSeries && playable.length > 0 && (
         <div className="mt-6">
           <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
             <Play className="w-4 h-4 text-violet-400" />
@@ -325,50 +382,73 @@ export default function DownloadLinks({
         </div>
       )}
 
-      {groups.length > 0 && (
+      {hasDownloads && (
         <div className="mt-6">
           <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
             <Download className="w-4 h-4 text-emerald-400" />
             لینک دانلود
             <span className="text-gray-500 font-normal text-xs">({(downloads || []).length} لینک)</span>
           </h3>
-          <div className="space-y-3">
-            {groups.map((g) => (
-              <div key={g.group} className="rounded-xl bg-white/5 border border-white/10 p-3">
-                <p className="text-xs text-violet-300 font-medium mb-2">{g.group}</p>
-                <div className="flex flex-wrap gap-2">
-                  {g.items.map((d) => (
-                    <span
-                      key={`${d.quality}-${d.url}`}
-                      className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 overflow-hidden"
-                    >
-                      <a
-                        href={d.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-emerald-300 hover:bg-emerald-500/25 transition-colors"
-                        title={`دانلود ${d.quality}`}
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        {d.quality}
-                      </a>
-                      <button
-                        onClick={() => copyLink(d.url)}
-                        title="کپی لینک"
-                        className="px-2 py-1.5 text-emerald-300/70 hover:text-emerald-200 hover:bg-emerald-500/25 transition-colors border-r border-emerald-500/20"
-                      >
-                        {copiedUrl === d.url ? (
-                          <Check className="w-3.5 h-3.5 text-green-400" />
-                        ) : (
-                          <Copy className="w-3.5 h-3.5" />
-                        )}
-                      </button>
+
+          {/* برای سریال‌ها صدها لینک وجود دارد (۳۰۰+ لینک = ۳۰۰ دکمه در DOM).
+              اینجا به‌جای رندر همه، فصل‌ها و نسخه‌ها جمع‌شده‌اند و فقط با باز
+              کردن هر بخش، لینک‌های همان نسخه ساخته می‌شوند. */}
+          {isSeries ? (
+            <div className="space-y-2">
+              {series.seasons.map((season) => (
+                <details key={season.key} className="rounded-xl bg-white/5 border border-white/10">
+                  <summary className="cursor-pointer select-none px-3 py-2 text-xs flex flex-wrap items-center gap-2">
+                    <span className="text-violet-300 font-medium">{season.label}</span>
+                    <span className="text-gray-500">
+                      {season.variants.length} نسخه · {season.episodeCount} قسمت
                     </span>
-                  ))}
+                  </summary>
+                  <div className="px-3 pb-3 space-y-2">
+                    {season.variants.map((v) => (
+                      <details key={v.key} className="rounded-lg bg-black/25 border border-white/5">
+                        <summary className="cursor-pointer select-none px-2.5 py-1.5 text-[11px] flex flex-wrap items-center gap-2">
+                          <span className="text-sky-300">
+                            {[v.version, v.quality].filter(Boolean).join(' · ')}
+                          </span>
+                          <span className="text-gray-500">({v.episodes.length} لینک)</span>
+                        </summary>
+                        <div className="flex flex-wrap gap-2 p-2">
+                          {v.episodes.map((ep) => (
+                            <DownloadChip
+                              key={`${ep.episode}-${ep.url}`}
+                              quality={ep.label}
+                              url={ep.url}
+                              copied={copiedUrl === ep.url}
+                              onCopy={copyLink}
+                            />
+                          ))}
+                        </div>
+                      </details>
+                    ))}
+                  </div>
+                </details>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {groups.map((g) => (
+                <div key={g.group} className="rounded-xl bg-white/5 border border-white/10 p-3">
+                  <p className="text-xs text-violet-300 font-medium mb-2">{g.group}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {g.items.map((d) => (
+                      <DownloadChip
+                        key={`${d.quality}-${d.url}`}
+                        quality={d.quality}
+                        url={d.url}
+                        copied={copiedUrl === d.url}
+                        onCopy={copyLink}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
           <p className="text-[11px] text-gray-500 mt-2">
             لینک‌ها مستقیم و از سایت مبدأ هستند؛ اگر دانلود شروع نشد فیلترشکن را خاموش کنید.
           </p>

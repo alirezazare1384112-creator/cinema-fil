@@ -43,6 +43,14 @@ function isPrivateIp(ip: string): boolean {
   return false
 }
 
+/**
+ * نتیجهٔ بررسی DNS هر میزبان کش می‌شود: هنگام جلو/عقب بردن ویدیو مرورگر
+ * ده‌ها درخواست Range پشتِ‌سرهم می‌فرستد و بدون کش برای هر درخواست یک
+ * dns.lookup تازه انجام می‌شد (تأخیر شروع پخش + بار اضافه روی DNS).
+ */
+const hostCheckCache = new Map<string, number>()
+const HOST_CHECK_TTL = 10 * 60 * 1000
+
 /** فقط http(s) و آدرس‌های عمومی؛ آدرس‌های داخلی/localhost مسدود می‌شوند (محافظت SSRF). */
 async function assertPublicHttpUrl(raw: string): Promise<URL> {
   let u: URL
@@ -57,10 +65,15 @@ async function assertPublicHttpUrl(raw: string): Promise<URL> {
   if (net.isIP(u.hostname)) {
     if (isPrivateIp(u.hostname)) throw new Error('آدرس داخلی مجاز نیست')
   } else {
+    const cached = hostCheckCache.get(u.hostname)
+    if (cached && cached > Date.now()) return u
+
     const addrs = await dns.lookup(u.hostname, { all: true })
     if (!addrs.length || addrs.some((a) => isPrivateIp(a.address))) {
       throw new Error('آدرس داخلی مجاز نیست')
     }
+    if (hostCheckCache.size > 200) hostCheckCache.clear()
+    hostCheckCache.set(u.hostname, Date.now() + HOST_CHECK_TTL)
   }
   return u
 }
@@ -71,12 +84,18 @@ async function streamRemote(request: NextRequest, raw: string): Promise<Response
 
   const headers: Record<string, string> = {
     'User-Agent': BROWSER_UA,
-    Referer: 'https://www.f2medx.top/'
+    Referer: process.env.F2M_REFERER || 'https://www.f2medx.top/'
   }
   const range = request.headers.get('range')
   if (range) headers.Range = range
 
-  const upstream = await fetch(u.toString(), { headers, redirect: 'follow' })
+  // اگر کاربر پخش را ببندد یا به‌جای دیگری برود، اتصالِ بالادستی هم قطع
+  // می‌شود؛ وگرنه دانلودِ پس‌زمینه تا انتهای فایل ادامه پیدا می‌کرد.
+  const upstream = await fetch(u.toString(), {
+    headers,
+    redirect: 'follow',
+    signal: request.signal
+  })
   if (upstream.status !== 200 && upstream.status !== 206) {
     return new NextResponse('مبدأ ویدیو در دسترس نیست', { status: 502 })
   }
