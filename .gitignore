@@ -18,7 +18,14 @@
 /out/
 
 # production
-/build
+# Ignore build/ contents by default, but keep icons for electron-builder
+/build/*
+!/build/icon.ico
+!/build/icon.png
+!/build/icon.svg
+
+# Electron packaging output — never commit (large .exe files)
+/dist-electron/
 
 # misc
 .DS_Store

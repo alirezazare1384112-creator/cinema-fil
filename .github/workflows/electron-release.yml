@@ -1,0 +1,79 @@
+name: 📦 Build & Release Windows App
+
+# Triggered on:
+#   1. Manual dispatch (workflow_dispatch)
+#   2. Push of a tag like `v1.0.0` (creates a Release)
+#
+# Builds the Windows NSIS installer (.exe) and uploads it as a Release asset.
+# Runs on a Windows runner because Electron Builder's NSIS target requires
+# Windows toolchain.
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # needed to upload to Releases
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        # Use --ignore-scripts to skip the Electron binary download during install
+        # (electron-builder will fetch the right one for Windows)
+        run: npm ci
+
+      - name: Install Prisma engines (Windows-specific)
+        # Prisma's binary engines need to be fetched for the target platform
+        run: npx prisma generate
+        env:
+          NEXT_PUBLIC_TMDB_API_KEY: ${{ secrets.NEXT_PUBLIC_TMDB_API_KEY }}
+          OMDB_API_KEY: ${{ secrets.OMDB_API_KEY }}
+
+      - name: Create empty SQLite database
+        run: npx prisma db push
+
+      - name: Build Next.js (production, standalone output)
+        run: npm run build
+        env:
+          NEXT_PUBLIC_TMDB_API_KEY: ${{ secrets.NEXT_PUBLIC_TMDB_API_KEY }}
+
+      - name: Build Electron installer
+        run: npm run electron:dist
+        env:
+          # GitHub token for electron-builder to upload to Releases
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload installer artifact (always)
+        uses: actions/upload-artifact@v4
+        with:
+          name: CinephileVault-windows-exe
+          path: |
+            dist-electron/CinephileVault-*.exe
+            dist-electron/latest.yml
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish to GitHub Releases (only on tag)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist-electron/CinephileVault-*.exe
+            dist-electron/latest.yml
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}

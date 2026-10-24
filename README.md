@@ -32,7 +32,13 @@
 
 ## 🚀 Quick Start
 
-### Windows (one-click)
+### Option A — Download the Windows installer (no Node.js required!)
+
+Go to [Releases](https://github.com/alirezazare1384112-creator/cinema-fil/releases), download the latest **`CinephileVault-x.y.z-Setup.exe`**, double-click, and you're done. The app installs itself into `Program Files`, gets a desktop shortcut, and starts like any other Windows program.
+
+> Built automatically from the latest tag — see [the Electron build workflow](.github/workflows/electron-release.yml).
+
+### Option B — Run from source (Windows, one-click)
 
 1. Install **[Node.js 20 LTS](https://nodejs.org)** once (check: `node -v` in a terminal).
 2. Download this repo: `Code` → **Download ZIP**, then **extract the whole ZIP** (never download individual files).
@@ -41,6 +47,32 @@
 `setup.bat` verifies each step (right folder, Node version, npm), installs dependencies, retries once against a mirror registry on network failures, creates the empty SQLite database, and opens the app at **http://localhost:3000**. Every step is appended to **`install.log`** — if anything fails, send that file.
 
 For subsequent runs, just double-click **`start-cinephile.bat`** (auto-restarts the server if it stops).
+
+### Option C — Run in Electron dev mode
+
+For developers who want the native Electron window while developing:
+
+```bash
+npm install
+npx prisma db push
+npm run electron:dev
+```
+
+This starts Next.js dev server and opens it inside an Electron BrowserWindow. Refreshing the page reflects code changes immediately.
+
+### Build the Windows installer yourself
+
+```bash
+npm run electron:dist
+# → produces dist-electron/CinephileVault-1.0.0-Setup.exe
+```
+
+Or just the unpacked folder (no installer, for testing):
+
+```bash
+npm run electron:pack
+# → produces dist-electron/win-unpacked/Cinephile Vault.exe
+```
 
 > **Double-click did nothing, or commands say `package.json` not found (ENOENT)?** You are not inside the project folder. Open the folder in Explorer, type `cmd` in the address bar, press Enter, then run `setup.bat` — the prompt is guaranteed to be in the right directory.
 

@@ -1,9 +1,11 @@
 {
   "name": "cinephile-vault",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Personal movie/TV tracker with local media library, fan-edit gallery, and quotes collector — runs fully on your own computer.",
   "license": "MIT",
+  "author": "Alireza Zare <https://github.com/alirezazare1384112-creator>",
+  "main": "electron/main.cjs",
   "repository": {
     "type": "git",
     "url": "https://github.com/alirezazare1384112-creator/cinema-fil.git"
@@ -20,7 +22,9 @@
     "personal-media",
     "nextjs",
     "prisma",
-    "sqlite"
+    "sqlite",
+    "electron",
+    "desktop-app"
   ],
   "scripts": {
     "dev": "next dev",
@@ -28,7 +32,11 @@
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
-    "db:push": "prisma db push"
+    "db:push": "prisma db push",
+    "electron:dev": "concurrently -k -n next,electron -c green,cyan \"npm run dev\" \"wait-on http://127.0.0.1:3000 && cross-env NODE_ENV=development electron .\"",
+    "electron:build": "npm run build && electron-builder --win --config electron-builder.yml",
+    "electron:dist": "npm run build && electron-builder --win nsis --publish never --config electron-builder.yml",
+    "electron:pack": "npm run build && electron-builder --win dir --config electron-builder.yml"
   },
   "engines": {
     "node": ">=20"
@@ -48,9 +56,14 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^10.0.6",
+    "cross-env": "^10.1.0",
+    "electron": "^45.0.0",
+    "electron-builder": "^26.15.3",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wait-on": "^9.5.1"
   }
 }
