@@ -42,7 +42,7 @@ jobs:
           cp -r src prisma public "$STAGE"/
           cp package.json package-lock.json tsconfig.json next.config.ts \
              postcss.config.mjs eslint.config.mjs prisma.config.ts \
-             README.md setup.bat start-cinephile.bat .env.example .gitignore "$STAGE"/
+             README.md setup.bat start-cinephile.bat CinephileInstaller.bat .env.example .gitignore "$STAGE"/
           # بیلد تولید تا کاربر منتظر build نماند
           cp -r .next "$STAGE"/.next
           # پوشه خالی برای آپلودهای خود کاربر
@@ -57,8 +57,20 @@ jobs:
           generate_release_notes: true
           body: |
             ### نصب
-            1. فایل ZIP را دانلود و از حافظه دربیاورید
+
+            #### 🟢 راهِ ساده (پیشنهادی برای همه)
+            فایل `CinephileInstaller.bat` را از داخل ZIP دانلود کنید (یا مستقیماً از
+            [این لینک](https://raw.githubusercontent.com/alirezazare1384112-creator/cinema-fil/master/CinephileInstaller.bat))
+            و دابل‌کلیک کنید. خودش Node.js را نصب می‌کند، پروژه را دانلود و
+            نصب می‌کند، شورتکات دسکتاپ می‌سازد و برنامه را اجرا می‌کند.
+
+            #### یا راهِ دستی
+            1. کل ZIP را دانلود و از حالت فشرده دربیاورید
             2. `setup.bat` را اجرا کنید (نصب، دیتابیس خالی، سپس اجرای برنامه)
             3. فیلم‌ها و پوشه‌های ادیت خودتان را از داخل برنامه وصل کنید
 
             برنامه کاملاً محلی است؛ هیچ فیلم یا داده‌ای همراه بسته نیست.
+
+            ### Windows installer (NSIS)
+            اگر فایل `CinephileVault-1.0.0-Setup.exe` را در همین صفحه می‌بینید،
+            آن را دانلود و دابل‌کلیک کنید تا نصبِ ویندوزی انجام شود (بدون نیاز به Node.js).
