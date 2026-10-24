@@ -32,21 +32,40 @@
 
 ## 🚀 Quick Start
 
-### Option A — Download the Windows installer (no Node.js required!)
+### Option A — One-click installer (simplest, recommended for everyone)
 
-Go to [Releases](https://github.com/alirezazare1384112-creator/cinema-fil/releases), download the latest **`CinephileVault-x.y.z-Setup.exe`**, double-click, and you're done. The app installs itself into `Program Files`, gets a desktop shortcut, and starts like any other Windows program.
+> 👤 **For non-technical users** — you don't need to know what Node.js or npm is.
 
-> Built automatically from the latest tag — see [the Electron build workflow](.github/workflows/electron-release.yml).
+1. **Download** the installer file from this direct link:
+   - 🔗 **`https://raw.githubusercontent.com/alirezazare1384112-creator/cinema-fil/master/CinephileInstaller.bat`**
+   - Or right-click → "Save link as…" → save to your `Downloads` folder
+2. **Double-click** `CinephileInstaller.bat`
+3. Wait 2-5 minutes (the installer auto-downloads Node.js + the project, installs everything, creates a desktop shortcut)
+4. Click the new **"Cinephile Vault"** icon on your desktop
 
-### Option B — Run from source (Windows, one-click)
+The installer:
+- ✅ Downloads a portable Node.js (no admin required, no system changes)
+- ✅ Downloads the project from GitHub
+- ✅ Runs `npm install` (auto-retries on Iranian mirror if your internet is flaky)
+- ✅ Creates the local SQLite database
+- ✅ Creates **desktop + Start Menu shortcuts** with the Spider-Man themed icon
+- ✅ Launches the app at `http://localhost:3000`
 
-1. Install **[Node.js 20 LTS](https://nodejs.org)** once (check: `node -v` in a terminal).
+Install location: `%LOCALAPPDATA%\CinephileVault\app\` (you can find it via the shortcut properties)
+
+To **uninstall**: delete that folder + delete the desktop shortcut. Nothing else to clean up — Node portable was installed to `%LOCALAPPDATA%\CinephileNode\` and can be reused by other projects.
+
+### Option B — Download ZIP + run setup.bat
+
+If you prefer to download the project source manually:
+
+1. Install **[Node.js 20 LTS](https://nodejs.org)** once (check: `node -v` in a terminal). *Or skip this — the setup.bat will install a portable version automatically if missing.*
 2. Download this repo: `Code` → **Download ZIP**, then **extract the whole ZIP** (never download individual files).
 3. Open the extracted folder — the one where `setup.bat` sits next to `package.json` — and double-click **`setup.bat`**.
 
-`setup.bat` verifies each step (right folder, Node version, npm), installs dependencies, retries once against a mirror registry on network failures, creates the empty SQLite database, and opens the app at **http://localhost:3000**. Every step is appended to **`install.log`** — if anything fails, send that file.
+`setup.bat` verifies each step (right folder, Node version, npm), installs dependencies, retries once against a mirror registry on network failures, creates the empty SQLite database, **creates a desktop shortcut with the app icon**, and opens the app at **http://localhost:3000**. Every step is appended to **`install.log`** — if anything fails, send that file.
 
-For subsequent runs, just double-click **`start-cinephile.bat`** (auto-restarts the server if it stops).
+For subsequent runs, just double-click the **"Cinephile Vault"** desktop shortcut. Or run `start-cinephile.bat` directly (auto-restarts the server if it stops).
 
 ### Option C — Run in Electron dev mode
 
