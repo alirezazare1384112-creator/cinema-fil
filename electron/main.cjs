@@ -43,15 +43,18 @@ function startNextServer() {
 
   console.log('[main] starting Next.js standalone server:', serverFile)
 
-  nextProcess = spawn(process.execPath.replace(/electron(\.exe)?$/i, 'node'), [serverFile], {
+  // Electron ships with Node.js built-in. Setting ELECTRON_RUN_AS_NODE=1
+  // makes the Electron binary behave like a regular `node` binary.
+  // This avoids needing a separate Node.js installation on the user's
+  // machine — Electron itself runs the Next.js server.
+  nextProcess = spawn(process.execPath, [serverFile], {
     cwd: serverRoot,
     env: {
       ...process.env,
+      ELECTRON_RUN_AS_NODE: '1',
       NODE_ENV: 'production',
       PORT: String(PORT),
       HOSTNAME: HOST,
-      // Prisma needs to find the SQLite file relative to the app root
-      // — let it default to its own .next/standalone/ directory
     },
     windowsHide: true,
     stdio: ['ignore', 'pipe', 'pipe']

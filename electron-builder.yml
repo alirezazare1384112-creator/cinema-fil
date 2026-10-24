@@ -1,63 +1,38 @@
-# electron-builder configuration for Cinephile Vault.
+# electron-builder configuration for Cinephile Vault (v26+ compatible).
 # Docs: https://www.electron.build/configuration
 #
 # Build commands:
-#   npm run electron:dist    # produces dist-electron/CinephileVault-Setup-1.0.0.exe (NSIS installer)
+#   npm run electron:dist    # produces dist-electron/CinephileVault-Setup.exe (NSIS installer)
 #   npm run electron:pack    # produces dist-electron/win-unpacked/ (portable folder)
 
 appId: com.alirezazare.cinephilevault
 productName: Cinephile Vault
 copyright: Copyright (c) 2026 Alireza Zare
 
-# Where to put the final .exe (after build)
+# Output directory for the .exe and intermediate artifacts
 directories:
   output: dist-electron
   buildResources: build
 
-# Files included in the Electron app
-# (relative to project root)
+# Files included in the Electron app (relative to project root)
 files:
   - electron/**
   - package.json
-  - '!**/.env'
-  - '!**/.env.*'
-  - '!**/node_modules/*/{CHANGELOG.md,README.md,readme.md,readme,readme.txt,README,readme!md}'
-  - '!**/node_modules/**/{test,__tests__,tests,docs,doc,*.markdown,*.md,*.ts,*.flow,*.tsbuildinfo,.bin}'
-  - '!**/node_modules/**/{LICENSE,LICENCE,license,licence,BSD,GPL,MIT,UNLICENSE}'
-  - '!**/{.DS_Store,.git,.gitignore,.vscode,.idea,docs,doc,tests,test,coverage,*.log,CHANGELOG.md,README.md}'
-
-# Resources — bundled Next.js standalone server goes here (out-of-ASAR, accessible via path)
-# The main process spawns `node app/.next/standalone/server.js` from resourcesPath
-extraResources:
-  - from: .next/standalone
-    to: app/.next/standalone
-    filter: ['**/*']
-  - from: .next/static
-    to: app/.next/static
-    filter: ['**/*']
-  - from: public
-    to: app/public
-    filter: ['**/*']
-  - from: prisma
-    to: app/prisma
-    filter: ['**/*', '!dev.db', '!dev.db-journal']
-  - from: prisma.config.ts
-    to: app/prisma.config.ts
+  - "!**/.env"
+  - "!**/.env.*"
+  - "!**/node_modules/*/{CHANGELOG.md,README.md,readme.md,readme,readme.txt,README,readme!md}"
+  - "!**/node_modules/**/{test,__tests__,tests,docs,doc,*.markdown,*.md,*.ts,*.flow,*.tsbuildinfo,.bin}"
+  - "!**/node_modules/**/{LICENSE,LICENCE,license,licence,BSD,GPL,MIT,UNLICENSE}"
+  - "!**/{.DS_Store,.git,.gitignore,.vscode,.idea,docs,doc,tests,test,coverage,*.log,CHANGELOG.md,README.md}"
 
 # Windows NSIS installer configuration
+# (v26 schema: 'target' is a string array, not array-of-objects)
 win:
-  target:
-    - target: nsis
-      arch: [x64]
   icon: build/icon.ico
   artifactName: CinephileVault-${version}-Setup.${ext}
   publisherName: Alireza Zare
-  # Code signing: requires CSC_LINK env var pointing to a PFX cert.
-  # Without it, Windows SmartScreen will show "unknown publisher" warning
-  # on first run. Acceptable for personal use; not for public distribution.
-  # signtoolOptions:
-  #   certificateFile: ${env.CSC_LINK}
-  #   certificatePassword: ${env.CSC_KEY_PASSWORD}
+  target:
+    - nsis
 
 nsis:
   oneClick: false
@@ -71,22 +46,21 @@ nsis:
   createStartMenuShortcut: true
   shortcutName: Cinephile Vault
   menuCategory: Cinephile
-  # Show license agreement in installer (uses LICENSE file)
   license: LICENSE
-  # Custom installer languages (English + Persian if available)
-  installerLanguages:
-    - en_US
   deleteAppDataOnUninstall: false
-  # Display name shown in Add/Remove Programs
   uninstallDisplayName: Cinephile Vault
 
-# Portable target — produces a single .exe that doesn't need installation
-# (uncomment to also produce CinephileVault-1.0.0-portable.exe)
-# portable:
-#   artifactName: CinephileVault-${version}-portable.${ext}
+# Resources — bundled Next.js standalone server, static assets, prisma schema.
+# These end up at resourcesPath/app/... in the installed app (outside ASAR).
+# electron-builder v26 schema: list of {from, to, filter} objects.
+extraResources:
+  - { from: .next/standalone, to: app/.next/standalone, filter: ["**/*"] }
+  - { from: .next/static, to: app/.next/static, filter: ["**/*"] }
+  - { from: public, to: app/public, filter: ["**/*"] }
+  - { from: prisma, to: app/prisma, filter: ["**/*", "!dev.db", "!dev.db-journal"] }
+  - { from: prisma.config.ts, to: app/prisma.config.ts }
 
-# Publish configuration — used by `electron:publish` to upload to GitHub Releases
-# We use a separate GitHub Actions workflow for this instead.
+# Publish configuration — used by electron-builder when --publish flag is set
 publish:
   provider: github
   owner: alirezazare1384112-creator
