@@ -1,68 +1,10 @@
-# electron-builder configuration for Cinephile Vault (v26+ compatible).
-# Docs: https://www.electron.build/configuration
-#
-# Build commands:
-#   npm run electron:dist    # produces dist-electron/CinephileVault-Setup.exe (NSIS installer)
-#   npm run electron:pack    # produces dist-electron/win-unpacked/ (portable folder)
+# This file is intentionally minimal — most config lives in package.json
+# under the "build" key, which is the format electron-builder v26 supports
+# best. Keeping this file just so electron-builder CLI has a stable default.
 
 appId: com.alirezazare.cinephilevault
 productName: Cinephile Vault
-copyright: Copyright (c) 2026 Alireza Zare
-
-# Output directory for the .exe and intermediate artifacts
 directories:
   output: dist-electron
   buildResources: build
 
-# Files included in the Electron app (relative to project root)
-files:
-  - electron/**
-  - package.json
-  - "!**/.env"
-  - "!**/.env.*"
-  - "!**/node_modules/*/{CHANGELOG.md,README.md,readme.md,readme,readme.txt,README,readme!md}"
-  - "!**/node_modules/**/{test,__tests__,tests,docs,doc,*.markdown,*.md,*.ts,*.flow,*.tsbuildinfo,.bin}"
-  - "!**/node_modules/**/{LICENSE,LICENCE,license,licence,BSD,GPL,MIT,UNLICENSE}"
-  - "!**/{.DS_Store,.git,.gitignore,.vscode,.idea,docs,doc,tests,test,coverage,*.log,CHANGELOG.md,README.md}"
-
-# Windows NSIS installer configuration
-# (v26 schema: 'target' is a string array, not array-of-objects)
-win:
-  icon: build/icon.ico
-  artifactName: CinephileVault-${version}-Setup.${ext}
-  publisherName: Alireza Zare
-  target:
-    - nsis
-
-nsis:
-  oneClick: false
-  perMachine: false
-  allowElevation: true
-  allowToChangeInstallationDirectory: true
-  installerIcon: build/icon.ico
-  uninstallerIcon: build/icon.ico
-  installerHeaderIcon: build/icon.ico
-  createDesktopShortcut: true
-  createStartMenuShortcut: true
-  shortcutName: Cinephile Vault
-  menuCategory: Cinephile
-  license: LICENSE
-  deleteAppDataOnUninstall: false
-  uninstallDisplayName: Cinephile Vault
-
-# Resources — bundled Next.js standalone server, static assets, prisma schema.
-# These end up at resourcesPath/app/... in the installed app (outside ASAR).
-# electron-builder v26 schema: list of {from, to, filter} objects.
-extraResources:
-  - { from: .next/standalone, to: app/.next/standalone, filter: ["**/*"] }
-  - { from: .next/static, to: app/.next/static, filter: ["**/*"] }
-  - { from: public, to: app/public, filter: ["**/*"] }
-  - { from: prisma, to: app/prisma, filter: ["**/*", "!dev.db", "!dev.db-journal"] }
-  - { from: prisma.config.ts, to: app/prisma.config.ts }
-
-# Publish configuration — used by electron-builder when --publish flag is set
-publish:
-  provider: github
-  owner: alirezazare1384112-creator
-  repo: cinema-fil
-  releaseType: release
