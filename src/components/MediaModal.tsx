@@ -113,6 +113,10 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
 
   const [playingFile, setPlayingFile] = useState<string | null>(null)
 
+  // وقتی کاربر روی لینک دانلود کلیک می‌کند — برای نشان دادنِ «پیوند دادنِ فایل دانلودشده»
+  const [downloadStarted, setDownloadStarted] = useState<{ quality: string; url: string } | null>(null)
+  const [linkingFile, setLinkingFile] = useState(false)
+
   const handlePlayExternal = async (filePath: string) => {
     if (playingFile) return
     setPlayingFile(filePath)
@@ -131,6 +135,64 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
     } finally {
       setPlayingFile(null)
     }
+  }
+
+  /** باز کردن پنجرهٔ انتخاب فایل (ویندوز) و پیوند دادن فایل به این رسانه */
+  const handlePickAndLinkFile = async (): Promise<void> => {
+    if (linkingFile) return
+    if (!media) return
+    setLinkingFile(true)
+    try {
+      // ۱) باز کردن پنجرهٔ انتخاب فایل
+      const pickRes = await fetch('/api/pick-file', { method: 'POST' })
+      const pick = await pickRes.json().catch(() => null)
+      if (!pickRes.ok) {
+        toast(pick?.error || 'باز کردن پنجرهٔ انتخاب فایل ناموفق بود', 'error')
+        return
+      }
+      if (pick.canceled) {
+        // کاربر لغو کرد — بدون پیام
+        return
+      }
+      if (!pick?.path) {
+        toast('فایلی انتخاب نشد', 'error')
+        return
+      }
+
+      // ۲) ساخت LocalFile پیوند‌خورده با media.id
+      const createRes = await fetch('/api/local-files', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mediaId: media.id,
+          filePath: pick.path,
+          fileName: pick.name,
+          folderPath: pick.dir,
+          fileSize: pick.size ? String(pick.size) : null,
+          // فرض می‌کنیم کاربر فایل ویدیوییِ درست انتخاب کرده — پس category رو هم تنظیم کن
+          category: media.category || (media.mediaType === 'tv' ? 'series' : 'movie')
+        })
+      })
+      const created = await createRes.json().catch(() => null)
+      if (!createRes.ok) {
+        toast(created?.error || 'ذخیرهٔ فایل ناموفق بود', 'error')
+        return
+      }
+
+      toast(`فایل «${pick.name}» به «${media.title}» پیوند داده شد`, 'success')
+      setDownloadStarted(null)
+      // ۳) رفرش لیست فایل‌ها
+      void fetchLocalFiles(true)
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'خطا در پیوند دادن فایل', 'error')
+    } finally {
+      setLinkingFile(false)
+    }
+  }
+
+  /** وقتی کاربر روی لینک دانلود کلیک می‌کند */
+  const handleDownloadStart = (_url: string, quality: string): void => {
+    setDownloadStarted({ quality, url: _url })
   }
 
   const handleUpdateLocalFile = async (id: string, data: Record<string, unknown>) => {
@@ -654,13 +716,84 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
 
           {activeTab === 'files' && (
             <div className="space-y-3">
+              {/* نوار «پیوند دادنِ فایلِ دانلودشده» — وقتی کاربر روی لینک دانلود کلیک کرده */}
+              {downloadStarted && (
+                <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-4 animate-fade-in">
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
+                      <Download className="w-4 h-4 text-emerald-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-emerald-200 font-medium">
+                        دانلود «{downloadStarted.quality}» شروع شد
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+                        وقتی دانلود در مرورگر تمام شد، دکمهٔ پایین را بزن تا فایل را
+                        از پوشهٔ Downloads انتخاب کنی و خودکار به این فیلم پیوند بدهیم.
+                      </p>
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          onClick={handlePickAndLinkFile}
+                          disabled={linkingFile}
+                          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-l from-emerald-500 to-sky-500 text-white text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-60 disabled:cursor-wait"
+                        >
+                          {linkingFile ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <LinkIcon className="w-4 h-4" />
+                          )}
+                          {linkingFile ? 'در حال پیوند دادن…' : 'پیوند دادنِ فایل دانلودشده'}
+                        </button>
+                        <button
+                          onClick={() => setDownloadStarted(null)}
+                          disabled={linkingFile}
+                          className="px-3 py-2 rounded-lg bg-white/5 text-gray-300 text-sm hover:bg-white/10 transition-colors disabled:opacity-60"
+                        >
+                          بستن
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* هدرِ لیست فایل‌ها + دکمهٔ افزودن فایل */}
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+                  <HardDrive className="w-4 h-4 text-violet-400" />
+                  فایل‌های پیوند‌داده‌شده
+                  {localFiles.length > 0 && (
+                    <span className="text-gray-500 font-normal text-xs">({localFiles.length})</span>
+                  )}
+                </h3>
+                <button
+                  onClick={handlePickAndLinkFile}
+                  disabled={linkingFile}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-500/15 border border-violet-500/30 text-violet-300 text-sm hover:bg-violet-500/25 transition-colors disabled:opacity-60 disabled:cursor-wait shrink-0"
+                  title="باز کردن پنجرهٔ انتخاب فایل (ویندوز) و پیوند دادن به این فیلم"
+                >
+                  {linkingFile ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Upload className="w-4 h-4" />
+                  )}
+                  افزودن فایل
+                </button>
+              </div>
+
               {localLoading ? (
                 <p className="text-center text-gray-400 py-8">در حال بارگذاری...</p>
               ) : localFiles.length === 0 ? (
                 <div className="text-center py-12">
                   <HardDrive className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                  <p className="text-gray-400">فایل محلی برای این رسانه یافت نشد</p>
-                  <p className="text-sm text-gray-500 mt-2">از بخش «فیلم‌های لپتاپ» فایلی را به این رسانه پیوند دهید</p>
+                  <p className="text-gray-400">هنوز فایلی به این رسانه پیوند داده نشده</p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    روی «افزودن فایل» بالا کلیک کن و فایلِ ویدیوییِ روی هاردت رو انتخاب کن
+                  </p>
+                  <p className="text-xs text-gray-600 mt-3">
+                    یا پایین‌تر، لینکِ دانلود از سایت فیلم رو بزن — بعد از اتمام دانلود،
+                    دکمهٔ «پیوند دادنِ فایل دانلودشده» ظاهر می‌شه
+                  </p>
                 </div>
               ) : (
                 localFiles.map((f) => (
@@ -720,6 +853,7 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
               {!links && !linksLoading && !linksError && (
                 <p className="text-[11px] text-gray-500">
                   فایلی برای این رسانه نداری؟ اینجا لینک دانلود نسخه‌ها، زیرنویس و تریلر را بگیر.
+                  بعد از دانلود، خودکار به این فیلم پیوند داده می‌شه.
                 </p>
               )}
 
@@ -729,6 +863,7 @@ export default function MediaModal({ media, isOpen, onClose, onUpdate }: MediaMo
                 trailer={links?.trailer}
                 title={media.title}
                 className="mt-2"
+                onDownloadStart={handleDownloadStart}
               />
             </div>
           )}

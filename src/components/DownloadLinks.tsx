@@ -21,12 +21,14 @@ function DownloadChip({
   quality,
   url,
   copied,
-  onCopy
+  onCopy,
+  onDownloadStart
 }: {
   quality: string
   url: string
   copied: boolean
   onCopy: (url: string) => void
+  onDownloadStart?: (url: string, quality: string) => void
 }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 overflow-hidden">
@@ -34,6 +36,7 @@ function DownloadChip({
         href={url}
         target="_blank"
         rel="noopener noreferrer"
+        onClick={() => onDownloadStart?.(url, quality)}
         className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-emerald-300 hover:bg-emerald-500/25 transition-colors"
         title={`دانلود ${quality}`}
       >
@@ -61,6 +64,9 @@ interface DownloadLinksProps {
   title?: string
   posterSrc?: string | null
   className?: string
+  /** فراخوانی وقتی کاربر روی هر لینک دانلود کلیک می‌کند —
+   *  برای فعال‌کردنِ «اگه دانلود تمام شد، فایل رو پیوند بده» UI در مودال کتابخانه */
+  onDownloadStart?: (url: string, quality: string) => void
 }
 
 /**
@@ -74,7 +80,8 @@ export default function DownloadLinks({
   trailerKey,
   title,
   posterSrc,
-  className = ''
+  className = '',
+  onDownloadStart
 }: DownloadLinksProps) {
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null)
   const [playingUrl, setPlayingUrl] = useState<string | null>(null)
@@ -420,6 +427,7 @@ export default function DownloadLinks({
                               url={ep.url}
                               copied={copiedUrl === ep.url}
                               onCopy={copyLink}
+                              onDownloadStart={onDownloadStart}
                             />
                           ))}
                         </div>
@@ -442,6 +450,7 @@ export default function DownloadLinks({
                         url={d.url}
                         copied={copiedUrl === d.url}
                         onCopy={copyLink}
+                        onDownloadStart={onDownloadStart}
                       />
                     ))}
                   </div>
