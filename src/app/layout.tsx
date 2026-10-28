@@ -13,6 +13,7 @@ const inter = Inter({
 const SITE_URL = "https://github.com/alirezazare1384112-creator/cinema-fil";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "سینمافیل — Vault و رسانه",
     template: "%s · سینمافیل",
