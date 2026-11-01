@@ -2,7 +2,7 @@
   "name": "cinephile-vault",
   "version": "1.0.0",
   "private": true,
-  "description": "Personal movie/TV tracker with local media library, fan-edit gallery, and quotes collector — runs fully on your own computer.",
+  "description": "Personal movie/TV tracker with local media library, fan-edit gallery, and quotes collector \u2014 runs fully on your own computer.",
   "license": "MIT",
   "author": "Alireza Zare <https://github.com/alirezazare1384112-creator>",
   "main": "electron/main.cjs",
@@ -65,59 +65,5 @@
     "tailwindcss": "^4",
     "typescript": "^5",
     "wait-on": "^9.5.1"
-  },
-  "build": {
-    "appId": "com.alirezazare.cinephilevault",
-    "productName": "Cinephile Vault",
-    "copyright": "Copyright (c) 2026 Alireza Zare",
-    "directories": {
-      "output": "dist-electron",
-      "buildResources": "build"
-    },
-    "files": [
-      "electron/**",
-      "package.json",
-      "!**/.env",
-      "!**/.env.*",
-      "!**/node_modules/*/{CHANGELOG.md,README.md,readme.md,readme,readme.txt,README,readme!md}",
-      "!**/node_modules/**/{test,__tests__,tests,docs,doc,*.markdown,*.md,*.ts,*.flow,*.tsbuildinfo,.bin}",
-      "!**/node_modules/**/{LICENSE,LICENCE,license,licence,BSD,GPL,MIT,UNLICENSE}",
-      "!**/{.DS_Store,.git,.gitignore,.vscode,.idea,docs,doc,tests,test,coverage,*.log,CHANGELOG.md,README.md}"
-    ],
-    "extraResources": [
-      { "from": ".next/standalone", "to": "app/.next/standalone", "filter": ["**/*"] },
-      { "from": ".next/static", "to": "app/.next/static", "filter": ["**/*"] },
-      { "from": "public", "to": "app/public", "filter": ["**/*"] },
-      { "from": "prisma", "to": "app/prisma", "filter": ["**/*", "!dev.db", "!dev.db-journal"] },
-      { "from": "prisma.config.ts", "to": "app/prisma.config.ts" }
-    ],
-    "win": {
-      "icon": "build/icon.ico",
-      "artifactName": "CinephileVault-${version}-Setup.${ext}",
-      "publisherName": "Alireza Zare",
-      "target": ["nsis"]
-    },
-    "nsis": {
-      "oneClick": false,
-      "perMachine": false,
-      "allowElevation": true,
-      "allowToChangeInstallationDirectory": true,
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico",
-      "installerHeaderIcon": "build/icon.ico",
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Cinephile Vault",
-      "menuCategory": "Cinephile",
-      "license": "LICENSE",
-      "deleteAppDataOnUninstall": false,
-      "uninstallDisplayName": "Cinephile Vault"
-    },
-    "publish": {
-      "provider": "github",
-      "owner": "alirezazare1384112-creator",
-      "repo": "cinema-fil",
-      "releaseType": "release"
-    }
   }
 }

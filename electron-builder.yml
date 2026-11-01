@@ -1,10 +1,59 @@
-# This file is intentionally minimal — most config lives in package.json
-# under the "build" key, which is the format electron-builder v26 supports
-# best. Keeping this file just so electron-builder CLI has a stable default.
+# electron-builder configuration for Cinephile Vault.
+# Full config in YAML format — using --config flag.
+# Docs: https://www.electron.build/configuration
 
 appId: com.alirezazare.cinephilevault
 productName: Cinephile Vault
+copyright: Copyright (c) 2026 Alireza Zare
+
 directories:
   output: dist-electron
   buildResources: build
 
+files:
+  - electron/**
+  - package.json
+  - "!**/.env"
+  - "!**/.env.*"
+  - "!**/node_modules/*/{CHANGELOG.md,README.md,readme.md,readme,readme.txt,README,readme!md}"
+  - "!**/node_modules/**/{test,__tests__,tests,docs,doc,*.markdown,*.md,*.ts,*.flow,*.tsbuildinfo,.bin}"
+  - "!**/node_modules/**/{LICENSE,LICENCE,license,licence,BSD,GPL,MIT,UNLICENSE}"
+  - "!**/{.DS_Store,.git,.gitignore,.vscode,.idea,docs,doc,tests,test,coverage,*.log,CHANGELOG.md,README.md}"
+
+# Resources — bundled Next.js standalone server, static assets, prisma schema.
+# These end up at resourcesPath/app/... in the installed app (outside ASAR).
+extraResources:
+  - { from: .next/standalone, to: app/.next/standalone, filter: ["**/*"] }
+  - { from: .next/static, to: app/.next/static, filter: ["**/*"] }
+  - { from: public, to: app/public, filter: ["**/*"] }
+  - { from: prisma, to: app/prisma, filter: ["**/*", "!dev.db", "!dev.db-journal"] }
+  - { from: prisma.config.ts, to: app/prisma.config.ts }
+
+# Windows NSIS installer configuration
+win:
+  icon: build/icon.ico
+  artifactName: CinephileVault-${version}-Setup.${ext}
+  target:
+    - nsis
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Cinephile Vault
+  menuCategory: Cinephile
+  license: LICENSE
+  deleteAppDataOnUninstall: false
+  uninstallDisplayName: Cinephile Vault
+
+publish:
+  provider: github
+  owner: alirezazare1384112-creator
+  repo: cinema-fil
+  releaseType: release
