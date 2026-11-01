@@ -1,6 +1,6 @@
 {
   "name": "cinephile-vault",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Personal movie/TV tracker with local media library, fan-edit gallery, and quotes collector \u2014 runs fully on your own computer.",
   "license": "MIT",
