@@ -53,15 +53,17 @@ jobs:
       - name: انتشار روی GitHub Releases
         uses: softprops/action-gh-release@v2
         with:
-          files: cinephile-vault-*.zip
+          files: |
+            cinephile-vault-*.zip
+            CinephileInstaller.bat
           generate_release_notes: true
           body: |
             ### نصب
 
             #### 🟢 راهِ ساده (پیشنهادی برای همه)
-            فایل `CinephileInstaller.bat` را از داخل ZIP دانلود کنید (یا مستقیماً از
-            [این لینک](https://raw.githubusercontent.com/alirezazare1384112-creator/cinema-fil/master/CinephileInstaller.bat))
-            و دابل‌کلیک کنید. خودش Node.js را نصب می‌کند، پروژه را دانلود و
+            فایل `CinephileInstaller.bat` را از همین صفحه (یا از
+            [این لینک مستقیم](https://raw.githubusercontent.com/alirezazare1384112-creator/cinema-fil/master/CinephileInstaller.bat))
+            دانلود و دابل‌کلیک کنید. خودش Node.js را نصب می‌کند، پروژه را دانلود و
             نصب می‌کند، شورتکات دسکتاپ می‌سازد و برنامه را اجرا می‌کند.
 
             #### یا راهِ دستی
