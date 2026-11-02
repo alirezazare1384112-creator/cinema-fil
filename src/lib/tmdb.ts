@@ -112,13 +112,21 @@ export function genreLabels(
 
 /**
  * تصاویر سایت فیلم را از پروکسیِ سرور خودمان می‌فرستیم: مرورگر گاهی نمی‌تواند
- * مستقیم `f2medx.top` را بگیرد (پاسخ می‌آید ولی بدنهٔ تصویر نمی‌رسد) و پوسترها
- * خالی می‌مانند. از سمت سرور سالم دانلود و روی دیسک کش می‌شود.
+ * مستقیم تصاویرِ سایتِ فیلم رو بگیرد (پاسخ می‌آید ولی بدنهٔ تصویر نمی‌رسد) و
+ * پوسترها خالی می‌مانند. از سمت سرور سالم دانلود و روی دیسک کش می‌شود.
+ *
+ * هم دامنهٔ قدیمی (f2medx.top) و هم دامنهٔ فعلی (f2mc.top) پشتیبانی می‌شوند
+ * تا تصاویری که با آدرسِ قدیمی کش شده‌اند هم پروکسی بشن.
  */
+const F2M_HOSTS = new Set([
+  'f2medx.top', 'www.f2medx.top',  // دامنهٔ قدیمی (در صورت بازگشت یا کش قدیمی)
+  'f2mc.top', 'www.f2mc.top'       // دامنهٔ فعلی
+])
+
 export function viaImageProxy(url: string): string {
   try {
     const parsed = new URL(url)
-    if (parsed.hostname === 'f2medx.top' || parsed.hostname === 'www.f2medx.top') {
+    if (F2M_HOSTS.has(parsed.hostname)) {
       return `/api/f2m-image?url=${encodeURIComponent(url)}`
     }
   } catch {

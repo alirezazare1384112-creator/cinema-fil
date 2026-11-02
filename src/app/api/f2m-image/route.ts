@@ -20,8 +20,12 @@ const CACHE_DIR = path.join(process.cwd(), '.f2m-image-cache')
 const FETCH_TIMEOUT_MS = 10_000
 const MAX_CACHE_FILES = 4000
 
-/** فقط این میزبان‌ها از سمت سرور دانلود می‌شوند (جلوی سوءاستفاده از پروکسی) */
-const ALLOWED_HOSTS = new Set(['f2medx.top', 'www.f2medx.top'])
+/** فقط این میزبان‌ها از سمت سرور دانلود می‌شوند (جلوی سوءاستفاده از پروکسی)
+ *  هم دامنهٔ قدیمی (f2medx.top) و هم دامنهٔ فعلی (f2mc.top) پشتیبانی می‌شوند. */
+const ALLOWED_HOSTS = new Set([
+  'f2medx.top', 'www.f2medx.top',
+  'f2mc.top', 'www.f2mc.top'
+])
 
 const USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
@@ -94,7 +98,7 @@ async function download(url: string): Promise<{ buf: Buffer; type: string } | nu
         headers: {
           'User-Agent': USER_AGENT,
           Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-          Referer: 'https://www.f2medx.top/'
+          Referer: 'https://www.f2mc.top/'
         },
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
       })

@@ -84,7 +84,7 @@ async function streamRemote(request: NextRequest, raw: string): Promise<Response
 
   const headers: Record<string, string> = {
     'User-Agent': BROWSER_UA,
-    Referer: process.env.F2M_REFERER || 'https://www.f2medx.top/'
+    Referer: process.env.F2M_REFERER || 'https://www.f2mc.top/'
   }
   const range = request.headers.get('range')
   if (range) headers.Range = range
