@@ -150,15 +150,31 @@ if not exist "%INSTALL_DIR%\node.zip" goto node_download_failed
 for %%F in ("%INSTALL_DIR%\node.zip") do if %%~zF LSS 1000000 goto node_download_failed
 
 echo  [2/6] استخراج Node.js...
+
+rem مطمئن شو پوشهٔ مقصد وجود داره
+if not exist "%NODE_DIR%" mkdir "%NODE_DIR%"
+
+rem روش ۱: tar (ویندوز 10 1803+ — قابل‌اعتمادترین برای استخراج zip)
+where tar >nul 2>nul
+if not errorlevel 1 (
+    echo  [چک] در حال استخراج با tar...
+    tar -xf "%INSTALL_DIR%\node.zip" -C "%NODE_DIR%" --strip-components=0 2>nul
+    if exist "%NODE_DIR%\node.exe" goto node_extract_done
+)
+
+rem روش ۲: PowerShell Expand-Archive (fallback)
+echo  [چک] tar ناموفق - تلاش با PowerShell Expand-Archive...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Expand-Archive -Path '%INSTALL_DIR%\node.zip' -DestinationPath '%NODE_DIR%' -Force"
 if errorlevel 1 goto node_extract_failed
 
+:node_extract_done
 del "%INSTALL_DIR%\node.zip"
 
 set "NODE_BIN=%NODE_DIR%\node.exe"
 set "NPM_BIN=%NODE_DIR%\npm.cmd"
 
-rem بررسی نسخه
+rem بررسی نسخه — اگه node.exe پیدا نشد، استخراج واقعاً ناموفق بوده
+if not exist "%NODE_BIN%" goto node_extract_failed
 "%NODE_BIN%" -v >nul 2>nul
 if errorlevel 1 goto node_extract_failed
 

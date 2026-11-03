@@ -66,8 +66,21 @@ if not errorlevel 1 (
     for %%F in ("%TEMP%\node.zip") do if %%~zF LSS 1000000 goto no_node
 
     echo  [چک] استخراج Node.js...
+    if not exist "%NODE_DIR%" mkdir "%NODE_DIR%"
+
+    rem روش ۱: tar (ویندوز 10+)
+    where tar >nul 2>nul
+    if not errorlevel 1 (
+        tar -xf "%TEMP%\node.zip" -C "%NODE_DIR%" --strip-components=0 2>nul
+        if exist "%NODE_DIR%\node.exe" goto node_setup_done
+    )
+
+    rem روش ۲: PowerShell Expand-Archive
     powershell -NoProfile -ExecutionPolicy Bypass -Command "Expand-Archive -Path '%TEMP%\node.zip' -DestinationPath '%NODE_DIR%' -Force"
     if errorlevel 1 goto no_node
+
+    :node_setup_done
+    if not exist "%NODE_DIR%\node.exe" goto no_node
     del "%TEMP%\node.zip"
     set "NODE_BIN=%NODE_DIR%\node.exe"
     set "NPM_BIN=%NODE_DIR%\npm.cmd"
