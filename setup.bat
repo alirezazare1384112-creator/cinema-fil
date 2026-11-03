@@ -41,10 +41,10 @@ if not errorlevel 1 (
     set "NODE_BIN=%NODE_DIR%\node.exe"
     set "NPM_BIN=%NODE_DIR%\npm.cmd"
     set "PATH=%NODE_DIR%;%PATH%"
-    echo  [چک] Node portable (قبلاً نصب‌شده) استفاده می‌شود.
+    echo  [چک] Node portable قبلاً نصب‌شده - استفاده مجدد.
 ) else (
     echo  [چک] Node.js پیدا نشد - در حال نصبِ نسخهٔ portable بدون دسترسی مدیر...
-    echo     نسخه: %NODE_VERSION% (~30MB)
+    echo     نسخه: %NODE_VERSION% - حدود 30MB
     echo [%date% %time%] node download start >> install.log
 
     rem روش ۱: curl (قابل‌اعتمادترین روی ویندوز 10+)

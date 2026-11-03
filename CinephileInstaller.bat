@@ -76,9 +76,9 @@ if not errorlevel 1 (
     echo  [چک] تلاش ۱/۴: curl + GitHub مستقیم...
     curl -L --fail --connect-timeout 15 --max-time 120 -o "%INSTALL_DIR%\project.zip" "%PROJECT_ZIP_URL%" 2>nul
     if not errorlevel 1 goto project_extract
-    echo  [چک] GitHub مستقیم ناموفق (احتمالاً فیلتر/DNS).
+    echo  [چک] GitHub مستقیم ناموفق - احتمالاً فیلتر یا DNS.
 
-    echo  [چک] تلاش ۲/۴: curl + ghproxy.com (mirror)...
+    echo  [چک] تلاش ۲/۴: curl + ghproxy.com mirror...
     curl -L --fail --connect-timeout 15 --max-time 120 -o "%INSTALL_DIR%\project.zip" "%PROJECT_MIRROR_1%" 2>nul
     if not errorlevel 1 goto project_extract
 
@@ -156,7 +156,7 @@ if not errorlevel 1 (
     curl -L --fail --connect-timeout 15 --max-time 120 -o "%INSTALL_DIR%\node.zip" "%NODE_DIST%" 2>nul
     if not errorlevel 1 goto node_extract
 
-    echo  [چک] تلاش ۲/۳: curl + npmmirror.com (mirror چین)...
+    echo  [چک] تلاش ۲/۳: curl + npmmirror.com mirror چین...
     curl -L --fail --connect-timeout 15 --max-time 120 -o "%INSTALL_DIR%\node.zip" "%NODE_MIRROR%" 2>nul
     if not errorlevel 1 goto node_extract
 )
