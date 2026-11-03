@@ -23,9 +23,9 @@ set "NODE_DIST=https://nodejs.org/dist/%NODE_VERSION%/node-%NODE_VERSION%-win-x6
 set "NODE_MIRROR=https://registry.npmmirror.com/-/binary/node/%NODE_VERSION%/node-%NODE_VERSION%-win-x64.zip"
 set "NODE_DIR=%LOCALAPPDATA%\CinephileNode"
 set "PROJECT_ZIP_URL=https://github.com/alirezazare1384112-creator/cinema-fil/archive/refs/heads/master.zip"
-set "PROJECT_MIRROR_1=https://ghproxy.com/https://github.com/alirezazare1384112-creator/cinema-fil/archive/refs/heads/master.zip"
-set "PROJECT_MIRROR_2=https://mirror.ghproxy.com/https://github.com/alirezazare1384112-creator/cinema-fil/archive/refs/heads/master.zip"
-set "PROJECT_MIRROR_3=https://gh-proxy.com/https://github.com/alirezazare1384112-creator/cinema-fil/archive/refs/heads/master.zip"
+set "PROJECT_MIRROR_1=https://gh-proxy.com/https://github.com/alirezazare1384112-creator/cinema-fil/archive/refs/heads/master.zip"
+set "PROJECT_MIRROR_2=https://ghproxy.com/https://github.com/alirezazare1384112-creator/cinema-fil/archive/refs/heads/master.zip"
+set "PROJECT_MIRROR_3=https://mirror.ghproxy.com/https://github.com/alirezazare1384112-creator/cinema-fil/archive/refs/heads/master.zip"
 set "LOG_FILE=%INSTALL_DIR%\install.log"
 
 echo.
