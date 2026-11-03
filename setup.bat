@@ -46,14 +46,27 @@ if not errorlevel 1 (
     echo  [چک] Node.js پیدا نشد - در حال نصبِ نسخهٔ portable بدون دسترسی مدیر...
     echo     نسخه: %NODE_VERSION% (~30MB)
     echo [%date% %time%] node download start >> install.log
-    powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-        "$ProgressPreference = 'SilentlyContinue';" ^
-        "Invoke-WebRequest -Uri '%NODE_DIST%' -OutFile '%TEMP%\node.zip' -UseBasicParsing;"
+
+    rem روش ۱: curl (قابل‌اعتمادترین روی ویندوز 10+)
+    where curl >nul 2>nul
+    if not errorlevel 1 (
+        echo  [چک] در حال دانلود با curl...
+        curl -L --fail --connect-timeout 30 --max-time 300 -o "%TEMP%\node.zip" "%NODE_DIST%"
+        if not errorlevel 1 goto node_extract_setup
+    )
+
+    rem روش ۲: PowerShell با TLS 1.2 اجباری
+    echo  [چک] curl ناموفق - تلاش با PowerShell (با TLS 1.2)...
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri '%NODE_DIST%' -OutFile '%TEMP%\node.zip' -UseBasicParsing"
     if errorlevel 1 goto no_node
+
+    :node_extract_setup
+    rem بررسی اینکه فایل واقعاً دانلود شده
+    if not exist "%TEMP%\node.zip" goto no_node
+    for %%F in ("%TEMP%\node.zip") do if %%~zF LSS 1000000 goto no_node
+
     echo  [چک] استخراج Node.js...
-    powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-        "$ProgressPreference = 'SilentlyContinue';" ^
-        "Expand-Archive -Path '%TEMP%\node.zip' -DestinationPath '%NODE_DIR%' -Force;"
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Expand-Archive -Path '%TEMP%\node.zip' -DestinationPath '%NODE_DIR%' -Force"
     if errorlevel 1 goto no_node
     del "%TEMP%\node.zip"
     set "NODE_BIN=%NODE_DIR%\node.exe"

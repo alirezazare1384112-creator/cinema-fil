@@ -64,15 +64,23 @@ echo  [1/6] در حال دانلود پروژه از GitHub...
 echo     آدرس: %PROJECT_ZIP_URL%
 echo [%date% %time%] download start >> "%LOG_FILE%"
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-    "$ProgressPreference = 'SilentlyContinue';" ^
-    "try {" ^
-    "  Invoke-WebRequest -Uri '%PROJECT_ZIP_URL%' -OutFile '%INSTALL_DIR%\project.zip' -UseBasicParsing;" ^
-    "  exit 0;" ^
-    "} catch {" ^
-    "  exit 1;" ^
-    "}"
+rem روش ۱: curl (قابل‌اعتمادترین روی ویندوز 10+)
+where curl >nul 2>nul
+if not errorlevel 1 (
+    echo  [چک] در حال دانلود با curl...
+    curl -L --fail --connect-timeout 30 --max-time 300 -o "%INSTALL_DIR%\project.zip" "%PROJECT_ZIP_URL%"
+    if not errorlevel 1 goto project_extract
+)
+
+rem روش ۲: PowerShell با TLS 1.2 اجباری
+echo  [چک] curl ناموفق - تلاش با PowerShell (با TLS 1.2)...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri '%PROJECT_ZIP_URL%' -OutFile '%INSTALL_DIR%\project.zip' -UseBasicParsing"
 if errorlevel 1 goto download_failed
+
+:project_extract
+rem بررسی اینکه فایل واقعاً دانلود شده (حداقل 5MB)
+if not exist "%INSTALL_DIR%\project.zip" goto download_failed
+for %%F in ("%INSTALL_DIR%\project.zip") do if %%~zF LSS 5000000 goto download_failed
 
 echo [%date% %time%] download OK >> "%LOG_FILE%"
 
@@ -122,15 +130,27 @@ echo     (بدون نیاز به دسترسیِ مدیر - نصبِ بی‌صد�
 echo     نسخه: %NODE_VERSION% (~30MB)
 echo [%date% %time%] node download start >> "%LOG_FILE%"
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-    "$ProgressPreference = 'SilentlyContinue';" ^
-    "Invoke-WebRequest -Uri '%NODE_DIST%' -OutFile '%INSTALL_DIR%\node.zip' -UseBasicParsing;"
+rem روش ۱: curl (ویندوز 10 1803+ به‌صورت پیش‌فرض curl داره — قابل‌اعتمادترین)
+where curl >nul 2>nul
+if not errorlevel 1 (
+    echo  [چک] در حال دانلود با curl...
+    curl -L --fail --connect-timeout 30 --max-time 300 -o "%INSTALL_DIR%\node.zip" "%NODE_DIST%"
+    if not errorlevel 1 goto node_extract
+)
+
+rem روش ۲: PowerShell با TLS 1.2 اجباری (برای ویندوزهای قدیمی‌تر که curl ندارن
+rem یا curl fail شده)
+echo  [چک] curl ناموفق یا موجود نیست - تلاش با PowerShell (با TLS 1.2)...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri '%NODE_DIST%' -OutFile '%INSTALL_DIR%\node.zip' -UseBasicParsing"
 if errorlevel 1 goto node_download_failed
 
+:node_extract
+rem بررسی اینکه فایل واقعاً دانلود شده (حداقل 1MB)
+if not exist "%INSTALL_DIR%\node.zip" goto node_download_failed
+for %%F in ("%INSTALL_DIR%\node.zip") do if %%~zF LSS 1000000 goto node_download_failed
+
 echo  [2/6] استخراج Node.js...
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-    "$ProgressPreference = 'SilentlyContinue';" ^
-    "Expand-Archive -Path '%INSTALL_DIR%\node.zip' -DestinationPath '%NODE_DIR%' -Force;"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Expand-Archive -Path '%INSTALL_DIR%\node.zip' -DestinationPath '%NODE_DIR%' -Force"
 if errorlevel 1 goto node_extract_failed
 
 del "%INSTALL_DIR%\node.zip"
