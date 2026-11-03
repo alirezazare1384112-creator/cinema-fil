@@ -20,8 +20,12 @@ rem ========================================================================
 set "INSTALL_DIR=%LOCALAPPDATA%\CinephileVault"
 set "NODE_VERSION=v22.11.0"
 set "NODE_DIST=https://nodejs.org/dist/%NODE_VERSION%/node-%NODE_VERSION%-win-x64.zip"
+set "NODE_MIRROR=https://registry.npmmirror.com/-/binary/node/%NODE_VERSION%/node-%NODE_VERSION%-win-x64.zip"
 set "NODE_DIR=%LOCALAPPDATA%\CinephileNode"
 set "PROJECT_ZIP_URL=https://github.com/alirezazare1384112-creator/cinema-fil/archive/refs/heads/master.zip"
+set "PROJECT_MIRROR_1=https://ghproxy.com/https://github.com/alirezazare1384112-creator/cinema-fil/archive/refs/heads/master.zip"
+set "PROJECT_MIRROR_2=https://mirror.ghproxy.com/https://github.com/alirezazare1384112-creator/cinema-fil/archive/refs/heads/master.zip"
+set "PROJECT_MIRROR_3=https://gh-proxy.com/https://github.com/alirezazare1384112-creator/cinema-fil/archive/refs/heads/master.zip"
 set "LOG_FILE=%INSTALL_DIR%\install.log"
 
 echo.
@@ -64,16 +68,31 @@ echo  [1/6] در حال دانلود پروژه از GitHub...
 echo     آدرس: %PROJECT_ZIP_URL%
 echo [%date% %time%] download start >> "%LOG_FILE%"
 
-rem روش ۱: curl (قابل‌اعتمادترین روی ویندوز 10+)
+rem --- تلاش با چندین منبع (GitHub مستقیم + mirrorهای قابل دسترس از ایران) ---
+
+rem روش ۱: curl از GitHub مستقیم
 where curl >nul 2>nul
 if not errorlevel 1 (
-    echo  [چک] در حال دانلود با curl...
-    curl -L --fail --connect-timeout 30 --max-time 300 -o "%INSTALL_DIR%\project.zip" "%PROJECT_ZIP_URL%"
+    echo  [چک] تلاش ۱/۴: curl + GitHub مستقیم...
+    curl -L --fail --connect-timeout 15 --max-time 120 -o "%INSTALL_DIR%\project.zip" "%PROJECT_ZIP_URL%" 2>nul
+    if not errorlevel 1 goto project_extract
+    echo  [چک] GitHub مستقیم ناموفق (احتمالاً فیلتر/DNS).
+
+    echo  [چک] تلاش ۲/۴: curl + ghproxy.com (mirror)...
+    curl -L --fail --connect-timeout 15 --max-time 120 -o "%INSTALL_DIR%\project.zip" "%PROJECT_MIRROR_1%" 2>nul
+    if not errorlevel 1 goto project_extract
+
+    echo  [چک] تلاش ۳/۴: curl + mirror.ghproxy.com...
+    curl -L --fail --connect-timeout 15 --max-time 120 -o "%INSTALL_DIR%\project.zip" "%PROJECT_MIRROR_2%" 2>nul
+    if not errorlevel 1 goto project_extract
+
+    echo  [چک] تلاش ۴/۴: curl + gh-proxy.com...
+    curl -L --fail --connect-timeout 15 --max-time 120 -o "%INSTALL_DIR%\project.zip" "%PROJECT_MIRROR_3%" 2>nul
     if not errorlevel 1 goto project_extract
 )
 
-rem روش ۲: PowerShell با TLS 1.2 اجباری
-echo  [چک] curl ناموفق - تلاش با PowerShell (با TLS 1.2)...
+rem روش ۲: PowerShell با TLS 1.2 از GitHub مستقیم (آخرین تلاش)
+echo  [چک] همهٔ mirrorها ناموفق - تلاش نهایی با PowerShell + TLS 1.2...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri '%PROJECT_ZIP_URL%' -OutFile '%INSTALL_DIR%\project.zip' -UseBasicParsing"
 if errorlevel 1 goto download_failed
 
@@ -130,17 +149,20 @@ echo     (بدون نیاز به دسترسیِ مدیر - نصبِ بی‌صد�
 echo     نسخه: %NODE_VERSION% (~30MB)
 echo [%date% %time%] node download start >> "%LOG_FILE%"
 
-rem روش ۱: curl (ویندوز 10 1803+ به‌صورت پیش‌فرض curl داره — قابل‌اعتمادترین)
+rem روش ۱: curl از nodejs.org مستقیم
 where curl >nul 2>nul
 if not errorlevel 1 (
-    echo  [چک] در حال دانلود با curl...
-    curl -L --fail --connect-timeout 30 --max-time 300 -o "%INSTALL_DIR%\node.zip" "%NODE_DIST%"
+    echo  [چک] تلاش ۱/۳: curl + nodejs.org...
+    curl -L --fail --connect-timeout 15 --max-time 120 -o "%INSTALL_DIR%\node.zip" "%NODE_DIST%" 2>nul
+    if not errorlevel 1 goto node_extract
+
+    echo  [چک] تلاش ۲/۳: curl + npmmirror.com (mirror چین)...
+    curl -L --fail --connect-timeout 15 --max-time 120 -o "%INSTALL_DIR%\node.zip" "%NODE_MIRROR%" 2>nul
     if not errorlevel 1 goto node_extract
 )
 
-rem روش ۲: PowerShell با TLS 1.2 اجباری (برای ویندوزهای قدیمی‌تر که curl ندارن
-rem یا curl fail شده)
-echo  [چک] curl ناموفق یا موجود نیست - تلاش با PowerShell (با TLS 1.2)...
+rem روش ۲: PowerShell با TLS 1.2 از nodejs.org
+echo  [چک] تلاش ۳/۳: PowerShell + TLS 1.2 + nodejs.org...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri '%NODE_DIST%' -OutFile '%INSTALL_DIR%\node.zip' -UseBasicParsing"
 if errorlevel 1 goto node_download_failed
 
@@ -286,12 +308,17 @@ echo [%date% %time%] project download failed >> "%LOG_FILE%"
 echo  ============================================================
 echo   [خطا] دانلود پروژه از گیتهاب ناموفق بود.
 echo.
-echo   راه‌حل‌ها:
-echo     1. اینترنت/VPN را روشن کن و دوباره این فایل را اجرا کن.
-echo     2. اگه از داخل ایران هستی و فیلتره، یه VPN روشن کن.
-echo     3. اگه باز هم نشد، کل ZIP پروژه را از این آدرس دانلود کن:
+echo   احتمالاً گیتهاب از سیستم شما فیلتره یا DNS مشکل داره.
+echo.
+echo   راه‌حل‌ها (به ترتیبِ اولویت):
+echo     1. یه VPN روشن کن و دوباره این فایل را اجرا کن.
+echo     2. اگه VPN نداری، DNS ویندوز رو تغییر بده:
+echo        Settings → Network → Adapter Properties → IPv4 →
+echo        DNS را بذار: 8.8.8.8 و 1.1.1.1
+echo     3. یا فایل ZIP رو با مرورگر (با VPN روشن) از این آدرس دانلود کن:
 echo        %PROJECT_ZIP_URL%
-echo        و داخل %INSTALL_DIR%\app استخراج کن.
+echo        بعد فایل رو بذار تو: %INSTALL_DIR%\project.zip
+echo        و دوباره این installer رو اجرا کن.
 echo  ============================================================
 echo.
 pause
