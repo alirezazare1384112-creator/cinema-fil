@@ -33,9 +33,9 @@ echo  ============================================================
 echo                  نصب سینمافیل - Cinephile Vault
 echo  ============================================================
 echo   این ویزارد تمام مراحل نصب را خودکار انجام می‌دهد:
-echo     1. بررسی و نصب Node.js (بدون نیاز به دسترسی مدیر)
+echo     1. بررسی و نصب Node.js -بدون نیاز به دسترسی مدیر
 echo     2. دانلود پروژه از GitHub
-echo     3. نصب کتابخانه‌ها (1-3 دقیقه)
+echo     3. نصب کتابخانه‌ها -1-3 دقیقه
 echo     4. ساخت دیتابیس محلی
 echo     5. ساخت شورتکات دسکتاپ و Start Menu
 echo     6. اجرای برنامه
@@ -64,6 +64,28 @@ if exist "%PROJECT_DIR%\package.json" (
     goto node_check
 )
 
+rem ===== بررسیِ فایلِ project.zip از قبل موجود =====
+rem اگه کاربر فایل project.zip رو کنار installer گذاشته، از همون استفاده کن
+rem و از GitHub دانلود نکن — برای کاربرانی که GitHub فیلتره و فایل ZIP رو
+rem دستی از طریق Telegram یا مرورگر با VPN دریافت کردن.
+
+set "PRESET_ZIP="
+if exist "%~dp0project.zip" set "PRESET_ZIP=%~dp0project.zip"
+if exist "%INSTALL_DIR%\project.zip" set "PRESET_ZIP=%INSTALL_DIR%\project.zip"
+
+if not defined PRESET_ZIP goto try_github_download
+
+echo  [چک] فایل project.zip از قبل موجود: %PRESET_ZIP%
+for %%F in ("%PRESET_ZIP%") do set "PRESET_SIZE=%%~zF"
+echo     حجم: %PRESET_SIZE% bytes
+
+if %PRESET_SIZE% LSS 5000000 goto try_github_download
+
+echo     فایل معتبر است - از دانلود از GitHub صرف‌نظر می‌شه.
+copy /Y "%PRESET_ZIP%" "%INSTALL_DIR%\project.zip" >nul 2>nul
+goto project_extract
+
+:try_github_download
 echo  [1/6] در حال دانلود پروژه از GitHub...
 echo     آدرس: %PROJECT_ZIP_URL%
 echo [%date% %time%] download start >> "%LOG_FILE%"
@@ -91,7 +113,7 @@ if not errorlevel 1 (
     if not errorlevel 1 goto project_extract
 )
 
-rem روش ۲: PowerShell با TLS 1.2 از GitHub مستقیم (آخرین تلاش)
+rem روش ۲: PowerShell با TLS 1.2 از GitHub مستقیم آخرین تلاش
 echo  [چک] همهٔ mirrorها ناموفق - تلاش نهایی با PowerShell + TLS 1.2...
 powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri '%PROJECT_ZIP_URL%' -OutFile '%INSTALL_DIR%\project.zip' -UseBasicParsing"
 if errorlevel 1 goto download_failed
@@ -145,8 +167,8 @@ if exist "%NODE_DIR%\node.exe" (
 
 rem گرنه Node portable رو دانلود کن
 echo  [2/6] Node.js پیدا نشد - در حال دانلودِ نسخهٔ portable...
-echo     (بدون نیاز به دسترسیِ مدیر - نصبِ بی‌صدا)
-echo     نسخه: %NODE_VERSION% (~30MB)
+echo     بدون نیاز به دسترسیِ مدیر - نصبِ بی‌صدا
+echo     نسخه: %NODE_VERSION% -~30MB
 echo [%date% %time%] node download start >> "%LOG_FILE%"
 
 rem روش ۱: curl از nodejs.org مستقیم
@@ -210,7 +232,7 @@ echo.
 rem ===== مرحله ۳: نصب کتابخانه‌ها =====
 echo  [3/6] در حال نصب کتابخانه‌ها...
 echo     اولین نصب ۱ تا ۳ دقیقه طول می‌کشد؛ این پنجره را نببندید.
-echo     (اگر اینترنت کند است، ممکن است بیشتر طول بکشد)
+echo     -اگر اینترنت کند است، ممکن است بیشتر طول بکشد
 echo [%date% %time%] npm install start >> "%LOG_FILE%"
 
 pushd "%PROJECT_DIR%"
@@ -229,7 +251,7 @@ set PRISMA_ENGINES_MIRROR=https://registry.npmmirror.com/-/binary/prisma
 if exist node_modules rmdir /s /q node_modules
 call "%NPM_BIN%" install --no-audit --no-fund --loglevel=error --registry=https://registry.npmmirror.com 2>&1 | findstr /V "npm warn" | findstr /V "deprecated"
 if errorlevel 1 goto install_failed
-echo [%date% %time%] npm install (mirror) OK >> "%LOG_FILE%"
+echo [%date% %time%] npm install mirror OK >> "%LOG_FILE%"
 
 :install_done
 if not exist "node_modules\next" goto install_incomplete
@@ -310,12 +332,12 @@ echo   [خطا] دانلود پروژه از گیتهاب ناموفق بود.
 echo.
 echo   احتمالاً گیتهاب از سیستم شما فیلتره یا DNS مشکل داره.
 echo.
-echo   راه‌حل‌ها (به ترتیبِ اولویت):
+echo   راه‌حل‌ها به ترتیبِ اولویت:
 echo     1. یه VPN روشن کن و دوباره این فایل را اجرا کن.
 echo     2. اگه VPN نداری، DNS ویندوز رو تغییر بده:
 echo        Settings → Network → Adapter Properties → IPv4 →
 echo        DNS را بذار: 8.8.8.8 و 1.1.1.1
-echo     3. یا فایل ZIP رو با مرورگر (با VPN روشن) از این آدرس دانلود کن:
+echo     3. یا فایل ZIP رو با مرورگر با VPN روشن از این آدرس دانلود کن:
 echo        %PROJECT_ZIP_URL%
 echo        بعد فایل رو بذار تو: %INSTALL_DIR%\project.zip
 echo        و دوباره این installer رو اجرا کن.
@@ -339,7 +361,7 @@ echo.
 echo   راه‌حل:
 echo     1. اینترنت/VPN را روشن کن.
 echo     2. یا خودت Node.js را از https://nodejs.org نصب کن
-echo        (نسخه 22 یا بالاتر) و دوباره این فایل را اجرا کن.
+echo        -نسخه 22 یا بالاتر و دوباره این فایل را اجرا کن.
 echo  ============================================================
 echo.
 pause

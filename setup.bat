@@ -9,8 +9,8 @@ echo  ============================================================
 echo                  نصب سینمافیل - Cinephile Vault
 echo  ============================================================
 echo   این ویزارد تمام مراحل نصب را خودکار انجام می‌دهد:
-echo     1. بررسی Node.js (اگر نباشد، نسخهٔ portable نصب می‌شود)
-echo     2. نصب کتابخانه‌ها (1-3 دقیقه)
+echo     1. بررسی Node.js -اگر نباشد، نسخهٔ portable نصب می‌شود
+echo     2. نصب کتابخانه‌ها -1-3 دقیقه
 echo     3. ساخت دیتابیس محلی
 echo     4. ساخت شورتکات دسکتاپ و Start Menu
 echo     5. اجرای برنامه
@@ -56,7 +56,7 @@ if not errorlevel 1 (
     )
 
     rem روش ۲: PowerShell با TLS 1.2 اجباری
-    echo  [چک] curl ناموفق - تلاش با PowerShell (با TLS 1.2)...
+    echo  [چک] curl ناموفق - تلاش با PowerShell با TLS 1.2...
     powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; $ProgressPreference = 'SilentlyContinue'; Invoke-WebRequest -Uri '%NODE_DIST%' -OutFile '%TEMP%\node.zip' -UseBasicParsing"
     if errorlevel 1 goto no_node
 
@@ -107,7 +107,7 @@ set PRISMA_ENGINES_MIRROR=https://registry.npmmirror.com/-/binary/prisma
 if exist node_modules rmdir /s /q node_modules
 call "%NPM_BIN%" install --no-audit --no-fund --loglevel=error --registry=https://registry.npmmirror.com 2>&1 | findstr /V "npm warn" | findstr /V "deprecated"
 if errorlevel 1 goto install_failed
-echo [%date% %time%] npm install (mirror) OK >> install.log
+echo [%date% %time%] npm install mirror OK >> install.log
 
 :install_done
 if not exist "node_modules\next" goto install_incomplete
@@ -123,7 +123,7 @@ if not exist ".env" (
         echo        .env.example نیست - رد می‌شود.
     )
 ) else (
-    echo        فایل .env از قبل هست (دست نخورده).
+    echo        فایل .env از قبل هست دست نخورده.
 )
 
 rem ===== مرحله ۳: دیتابیس محلی =====
@@ -167,7 +167,7 @@ echo.
 echo   - برنامه در حال اجراست و مرورگر باز می‌شود.
 echo   - برای اجرای بعدی: روی آیکون «Cinephile Vault» دسکتاپ
 echo     دابل‌کلیک کن.
-echo   - برای خاموش کردن، همین پنجره را ببند (X).
+echo   - برای خاموش کردن، همین پنجره را ببند - ضربدر.
 echo  ============================================================
 echo [%date% %time%] install complete >> install.log
 
@@ -201,7 +201,7 @@ echo.
 echo   راه‌حل:
 echo     1. اینترنت/VPN را روشن کن.
 echo     2. یا خودت Node.js را از https://nodejs.org نصب کن
-echo        (نسخه 20 یا بالاتر) و دوباره setup را بزن.
+echo        -نسخه 20 یا بالاتر و دوباره setup را بزن.
 echo  ============================================================
 echo.
 pause
