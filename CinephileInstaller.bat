@@ -79,7 +79,7 @@ echo  [چک] فایل project.zip از قبل موجود: %PRESET_ZIP%
 for %%F in ("%PRESET_ZIP%") do set "PRESET_SIZE=%%~zF"
 echo     حجم: %PRESET_SIZE% bytes
 
-if %PRESET_SIZE% LSS 5000000 goto try_github_download
+if %PRESET_SIZE% LSS 100000 goto try_github_download
 
 echo     فایل معتبر است - از دانلود از GitHub صرف‌نظر می‌شه.
 copy /Y "%PRESET_ZIP%" "%INSTALL_DIR%\project.zip" >nul 2>nul
@@ -119,9 +119,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command "[Net.ServicePointManager
 if errorlevel 1 goto download_failed
 
 :project_extract
-rem بررسی اینکه فایل واقعاً دانلود شده (حداقل 5MB)
+rem بررسی اینکه فایل واقعاً دانلود شده - حداقل 100KB
 if not exist "%INSTALL_DIR%\project.zip" goto download_failed
-for %%F in ("%INSTALL_DIR%\project.zip") do if %%~zF LSS 5000000 goto download_failed
+for %%F in ("%INSTALL_DIR%\project.zip") do if %%~zF LSS 100000 goto download_failed
 
 echo [%date% %time%] download OK >> "%LOG_FILE%"
 
